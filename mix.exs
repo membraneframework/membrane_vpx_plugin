@@ -1,25 +1,26 @@
-defmodule Membrane.Template.Mixfile do
+defmodule Membrane.VPx.Plugin.Mixfile do
   use Mix.Project
 
   @version "0.1.0"
-  @github_url "https://github.com/membraneframework/membrane_template_plugin"
+  @github_url "https://github.com/membraneframework/membrane_vpx_plugin"
 
   def project do
     [
-      app: :membrane_template_plugin,
+      app: :membrane_vpx_plugin,
       version: @version,
       elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: dialyzer(),
+      compilers: [:unifex, :bundlex] ++ Mix.compilers(),
 
       # hex
-      description: "Template Plugin for Membrane Framework",
+      description: "Membrane Framework plugin for handling VP8 and VP9",
       package: package(),
 
       # docs
-      name: "Membrane Template plugin",
+      name: "Membrane VPx plugin",
       source_url: @github_url,
       docs: docs(),
       homepage_url: "https://membrane.stream"
@@ -38,6 +39,7 @@ defmodule Membrane.Template.Mixfile do
   defp deps do
     [
       {:membrane_core, "~> 1.0"},
+      {:unifex, "~> 1.2"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, ">= 0.0.0", only: :dev, runtime: false}
@@ -74,7 +76,7 @@ defmodule Membrane.Template.Mixfile do
       extras: ["README.md", "LICENSE"],
       formatters: ["html"],
       source_ref: "v#{@version}",
-      nest_modules_by_prefix: [Membrane.Template]
+      nest_modules_by_prefix: [Membrane.VPX]
     ]
   end
 end
