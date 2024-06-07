@@ -41,6 +41,9 @@ defmodule Membrane.VPx.Plugin.Mixfile do
       {:membrane_core, "~> 1.0"},
       {:unifex, "~> 1.2"},
       {:membrane_raw_video_format, "~> 0.4.0"},
+      {:membrane_vp8_format, "~> 0.4.0"},
+      {:membrane_ivf_plugin, "~> 0.7.0", only: :test},
+      {:membrane_file_plugin, "~> 0.17.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, ">= 0.0.0", only: :dev, runtime: false}

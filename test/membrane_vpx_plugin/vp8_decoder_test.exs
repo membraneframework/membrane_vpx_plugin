@@ -1,20 +1,24 @@
 defmodule Membrane.VP8.DecoderTest do
   use ExUnit.Case, async: true
-  alias Membrane.H264.FFmpeg.Decoder.Native
-  alias Membrane.Payload
 
-  test "Decode 1 240p frame" do
-    in_path = "../fixtures/input-100-240p.h264" |> Path.expand(__DIR__)
-    ref_path = "../fixtures/reference-100-240p.raw" |> Path.expand(__DIR__)
+  import Membrane.Testing.Assertions
+  import Membrane.ChildrenSpec
 
-    assert {:ok, file} = File.read(in_path)
-    assert {:ok, decoder_ref} = Native.create()
-    assert <<frame::bytes-size(7469), _rest::binary>> = file
-    assert {:ok, _pts_list, _frames} = Native.decode(frame, 0, 0, false, decoder_ref)
-    assert {:ok, _pts_list, [frame]} = Native.flush(false, decoder_ref)
-    assert Payload.size(frame) == 115_200
-    assert {:ok, ref_file} = File.read(ref_path)
-    assert <<ref_frame::bytes-size(115_200), _rest::binary>> = ref_file
-    assert Payload.to_binary(frame) == ref_frame
+  @fixtures_dir "test/fixtures"
+
+  @tag :tmp_dir
+  test "Decoder decodes", %{tmp_dir: tmp_dir} do
+    pid =
+      Membrane.Testing.Pipeline.start_link_supervised!(
+        spec:
+          child(:source, %Membrane.File.Source{
+            location: Path.join(@fixtures_dir, "input_vp8.ivf")
+          })
+          |> child(:deserializer, Membrane.Element.IVF.Deserializer)
+          |> child(:decoder, Membrane.VP8.Decoder)
+          |> child(:sink, %Membrane.File.Sink{location: Path.join(tmp_dir, "output.vp8")})
+      )
+
+    assert_end_of_stream(pid, :sink, :input, 2000)
   end
 end

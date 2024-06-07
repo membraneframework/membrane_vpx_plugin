@@ -6,3 +6,5 @@ spec create() :: {:ok :: label, state} | {:error :: label, reason :: atom}
 
 spec decode_frame(payload, state) ::
        {:ok :: label, frames :: [payload]} | {:error :: label, reason :: atom}
+
+dirty :cpu, decode_frame: 2
