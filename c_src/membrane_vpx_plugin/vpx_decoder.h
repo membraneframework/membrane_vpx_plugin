@@ -13,4 +13,4 @@ typedef struct Dimensions {
   unsigned int height;
 } Dimensions;
 
-#include "_generated/vp8_decoder.h"
+#include "_generated/vpx_decoder.h"

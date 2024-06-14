@@ -1,4 +1,4 @@
-#include "vp8_decoder.h"
+#include "vpx_decoder.h"
 
 void handle_destroy_state(UnifexEnv *env, State *state) {
   UNIFEX_UNUSED(env);
@@ -6,11 +6,18 @@ void handle_destroy_state(UnifexEnv *env, State *state) {
   vpx_codec_destroy(&state->codec_context);
 }
 
-UNIFEX_TERM create(UnifexEnv *env) {
+UNIFEX_TERM create(UnifexEnv *env, Codec codec) {
   UNIFEX_TERM result;
   State *state = unifex_alloc_state(env);
-  // state->codec_interface = vpx_codec_vp9_dx();
-  state->codec_interface = vpx_codec_vp8_dx();
+
+  switch (codec) {
+  case CODEC_VP8:
+    state->codec_interface = vpx_codec_vp8_dx();
+    break;
+  case CODEC_VP9:
+    state->codec_interface = vpx_codec_vp9_dx();
+    break;
+  }
 
   if (vpx_codec_dec_init(&state->codec_context, state->codec_interface, NULL,
                          0)) {

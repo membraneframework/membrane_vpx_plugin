@@ -8,7 +8,8 @@
     module: 1,
     spec: 1,
     state_type: 1,
-    dirty: 2
+    dirty: 2,
+    type: 1
   ],
   import_deps: [:membrane_core]
 ]

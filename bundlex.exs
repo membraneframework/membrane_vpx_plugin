@@ -9,17 +9,17 @@ defmodule Membrane.VPx.BundlexProject do
 
   defp natives() do
     [
-      vp8_decoder: [
+      vpx_decoder: [
         interface: :nif,
-        sources: ["vp8_decoder.c"],
+        sources: ["vpx_decoder.c"],
         os_deps: [
           libvpx: [{:pkg_config, "vpx"}]
         ],
         preprocessor: Unifex
       ]
-      # vp8_encoder: [
+      # vpx_encoder: [
       #   interface: :nif,
-      #   sources: ["encoder.c"],
+      #   sources: ["vpx_encoder.c"],
       #   os_deps: [
       #     libvpx: [{:pkg_config, "vpx"}]
       #   ],

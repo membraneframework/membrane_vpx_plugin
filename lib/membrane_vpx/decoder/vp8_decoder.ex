@@ -6,14 +6,11 @@ defmodule Membrane.VP8.Decoder do
 
   alias Membrane.Buffer
   alias Membrane.VP8
-  alias __MODULE__.Native
+  alias Membrane.VPx.Decoder.Native
 
   def_input_pad :input,
     accepted_format:
-      any_of(
-        Membrane.VP8,
-        %Membrane.RemoteStream{content_format: format} when format in [nil, VP8]
-      )
+      any_of(VP8, %Membrane.RemoteStream{content_format: format} when format in [nil, VP8])
 
   def_output_pad :output,
     accepted_format: Membrane.RawVideo
@@ -38,7 +35,7 @@ defmodule Membrane.VP8.Decoder do
 
   @impl true
   def handle_setup(_ctx, state) do
-    native = Native.create!()
+    native = Native.create!(:vp8)
 
     {[], %{state | decoder_ref: native}}
   end
