@@ -1,10 +1,15 @@
 defmodule Membrane.VPx.Decoder do
+  @moduledoc """
+  Common behaviors for VP8 and VP9 Decoders
+  """
   alias Membrane.{Buffer, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Decoder.Native
 
   defmodule State do
-    @moduledoc false
+    @moduledoc """
+    State of a decoder
+    """
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
