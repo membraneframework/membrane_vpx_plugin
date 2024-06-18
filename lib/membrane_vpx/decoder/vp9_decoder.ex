@@ -6,12 +6,9 @@ defmodule Membrane.VP9.Decoder do
 
   alias Membrane.{VP9, VPx}
 
-  def_input_pad :input,
-    accepted_format:
-      any_of(VP9, %Membrane.RemoteStream{content_format: format} when format in [nil, VP9])
+  def_input_pad :input, accepted_format: VP9
 
-  def_output_pad :output,
-    accepted_format: Membrane.RawVideo
+  def_output_pad :output, accepted_format: Membrane.RawVideo
 
   @impl true
   def handle_init(ctx, opts) do
