@@ -39,7 +39,7 @@ defmodule Membrane.VPx.DecoderTest do
           child(:source, %Membrane.File.Source{
             location: Path.join(@fixtures_dir, input_file)
           })
-          |> child(:deserializer, Membrane.Element.IVF.Deserializer)
+          |> child(:deserializer, Membrane.IVF.Deserializer)
           |> child(:decoder, decoder_module)
           |> child(:sink, %Membrane.File.Sink{location: output_path})
       )

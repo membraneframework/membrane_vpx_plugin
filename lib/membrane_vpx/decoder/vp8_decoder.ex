@@ -4,9 +4,7 @@ defmodule Membrane.VP8.Decoder do
   """
   use Membrane.Filter
 
-  alias Membrane.Buffer
-  alias Membrane.VP8
-  alias Membrane.VPx.Decoder.Native
+  alias Membrane.{VP8, VPx}
 
   def_input_pad :input,
     accepted_format:
@@ -15,54 +13,17 @@ defmodule Membrane.VP8.Decoder do
   def_output_pad :output,
     accepted_format: Membrane.RawVideo
 
-  defmodule State do
-    @moduledoc false
-    @type t :: %__MODULE__{
-            decoder_ref: reference() | nil
-          }
-
-    @enforce_keys []
-    defstruct @enforce_keys ++
-                [
-                  decoder_ref: nil
-                ]
+  @impl true
+  def handle_init(ctx, opts) do
+    VPx.Decoder.handle_init(ctx, opts, :vp8)
   end
 
   @impl true
-  def handle_init(_ctx, _opts) do
-    {[], %State{}}
-  end
+  defdelegate handle_setup(ctx, state), to: VPx.Decoder
 
   @impl true
-  def handle_setup(_ctx, state) do
-    native = Native.create!(:vp8)
-
-    {[], %{state | decoder_ref: native}}
-  end
+  defdelegate handle_stream_format(pad, stream_format, ctx, state), to: VPx.Decoder
 
   @impl true
-  def handle_playing(_ctx, state) do
-    stream_format =
-      %Membrane.RawVideo{
-        width: 0,
-        height: 0,
-        framerate: {0, 0},
-        pixel_format: :I420,
-        aligned: true
-      }
-
-    {[stream_format: {:output, stream_format}], state}
-  end
-
-  @impl true
-  def handle_stream_format(:input, _stream_format, _ctx, state) do
-    {[], state}
-  end
-
-  @impl true
-  def handle_buffer(:input, %Buffer{payload: payload}, _ctx, state) do
-    {:ok, decoded_frames} = Native.decode_frame(payload, state.decoder_ref)
-    buffers = Enum.map(decoded_frames, &%Buffer{payload: &1})
-    {[buffer: {:output, buffers}], state}
-  end
+  defdelegate handle_buffer(pad, buffer, ctx, state), to: VPx.Decoder
 end

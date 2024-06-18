@@ -88,10 +88,33 @@ void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img,
                        *output_frame);
 }
 
+PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
+  switch (img->fmt) {
+  case VPX_IMG_FMT_I422:
+    return PIXEL_FORMAT_I422;
+
+  case VPX_IMG_FMT_I420:
+    return PIXEL_FORMAT_I420;
+
+  case VPX_IMG_FMT_I444:
+    return PIXEL_FORMAT_I444;
+
+  case VPX_IMG_FMT_YV12:
+    return PIXEL_FORMAT_YV12;
+
+  case VPX_IMG_FMT_NV12:
+    return PIXEL_FORMAT_NV12;
+
+  default:
+    return PIXEL_FORMAT_I420;
+  }
+}
+
 UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   vpx_codec_iter_t iter = NULL;
   vpx_image_t *img = NULL;
   unsigned int frames_cnt = 0, max_frames = 2;
+  PixelFormat pixel_format;
   UnifexPayload **output_frames =
       unifex_alloc(max_frames * sizeof(*output_frames));
 
@@ -109,10 +132,12 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
 
     alloc_output_frame(env, img, &output_frames[frames_cnt]);
     get_output_frame_from_image(img, output_frames[frames_cnt]);
+    pixel_format = get_pixel_format_from_image(img);
     frames_cnt++;
   }
 
-  UNIFEX_TERM result = decode_frame_result_ok(env, output_frames, frames_cnt);
+  UNIFEX_TERM result =
+      decode_frame_result_ok(env, output_frames, frames_cnt, pixel_format);
   for (unsigned int i = 0; i < frames_cnt; i++) {
     if (output_frames[i] != NULL) {
       unifex_payload_release(output_frames[i]);
