@@ -6,9 +6,34 @@ defmodule Membrane.VP9.Decoder do
 
   alias Membrane.{VP9, VPx}
 
-  def_input_pad :input, accepted_format: VP9
+  def_options width: [
+                spec: non_neg_integer() | nil,
+                default: nil,
+                description: """
+                Width of a frame, assumed if not provided with stream format. In case it's not specified in either case the element will crash.
+                """
+              ],
+              height: [
+                spec: non_neg_integer() | nil,
+                default: nil,
+                description: """
+                Height of a frame, assumed if not provided with stream format. In case it's not specified in either case the element will crash.
+                """
+              ],
+              framerate: [
+                spec: {non_neg_integer(), pos_integer()} | nil,
+                default: nil,
+                description: """
+                Framerate, assumed if not provided with stream format. In case it's not specified in either case the element will crash.
+                """
+              ]
 
-  def_output_pad :output, accepted_format: Membrane.RawVideo
+  def_input_pad :input,
+    accepted_format:
+      any_of(VP9, %Membrane.RemoteStream{content_format: format} when format in [nil, VP9])
+
+  def_output_pad :output,
+    accepted_format: Membrane.RawVideo
 
   @impl true
   def handle_init(ctx, opts) do

@@ -14,7 +14,7 @@ defmodule Membrane.VPx.DecoderTest do
         "input_vp8.ivf",
         "output_vp8.raw",
         "ref_vp8.raw",
-        Membrane.VP8.Decoder
+        %Membrane.VP8.Decoder{framerate: {30, 1}}
       )
     end
 
@@ -24,12 +24,12 @@ defmodule Membrane.VPx.DecoderTest do
         "input_vp9.ivf",
         "output_vp9.raw",
         "ref_vp9.raw",
-        Membrane.VP9.Decoder
+        %Membrane.VP9.Decoder{framerate: {30, 1}}
       )
     end
   end
 
-  defp perform_decoder_test(tmp_dir, input_file, output_file, ref_file, decoder_module) do
+  defp perform_decoder_test(tmp_dir, input_file, output_file, ref_file, decoder_struct) do
     output_path = Path.join(tmp_dir, output_file)
     ref_path = Path.join(@fixtures_dir, ref_file)
 
@@ -40,7 +40,7 @@ defmodule Membrane.VPx.DecoderTest do
             location: Path.join(@fixtures_dir, input_file)
           })
           |> child(:deserializer, Membrane.IVF.Deserializer)
-          |> child(:decoder, decoder_module)
+          |> child(:decoder, decoder_struct)
           |> child(:sink, %Membrane.File.Sink{location: output_path})
       )
 
