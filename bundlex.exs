@@ -13,7 +13,10 @@ defmodule Membrane.VPx.BundlexProject do
         interface: :nif,
         sources: ["vpx_decoder.c"],
         os_deps: [
-          libvpx: [{:pkg_config, "vpx"}]
+          libvpx: [
+            {:precompiled, Membrane.PrecompiledDependencyProvider.get_dependency_url(:libvpx)},
+            {:pkg_config, "vpx"}
+          ]
         ],
         preprocessor: Unifex
       ]
