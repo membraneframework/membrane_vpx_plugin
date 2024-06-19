@@ -1,13 +1,11 @@
 #include "vpx_common.h"
 
 Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
-  const int height = (plane > 0 && img->y_chroma_shift > 0)
-                         ? (img->d_h + 1) >> img->y_chroma_shift
-                         : img->d_h;
+  const int height =
+      (plane > 0 && img->y_chroma_shift > 0) ? (img->d_h + 1) >> img->y_chroma_shift : img->d_h;
 
-  int width = (plane > 0 && img->x_chroma_shift > 0)
-                  ? (img->d_w + 1) >> img->x_chroma_shift
-                  : img->d_w;
+  int width =
+      (plane > 0 && img->x_chroma_shift > 0) ? (img->d_w + 1) >> img->x_chroma_shift : img->d_w;
 
   // Fixing NV12 chroma width if it is odd
   if (img->fmt == VPX_IMG_FMT_NV12 && plane == 1)
@@ -16,9 +14,9 @@ Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
   return (Dimensions){width, height};
 }
 
-void convert_between_image_and_raw_frame(vpx_image_t *img,
-                                         UnifexPayload *raw_frame,
-                                         ConversionType conversion_type) {
+void convert_between_image_and_raw_frame(
+    vpx_image_t *img, UnifexPayload *raw_frame, ConversionType conversion_type
+) {
   const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
 
   // Assuming that for nv12 we write all chroma data at once
