@@ -24,7 +24,7 @@ defmodule Membrane.VPx.Encoder do
 
   @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
 
-  @spec handle_init(CallbackContext.t(), VP8.Decoder.t() | VP9.Decoder.t(), :vp8 | :vp9) ::
+  @spec handle_init(CallbackContext.t(), VP8.Encoder.t() | VP9.Encoder.t(), :vp8 | :vp9) ::
           callback_return()
   def handle_init(_ctx, opts, codec) do
     state = %State{

@@ -29,7 +29,7 @@ defmodule Membrane.VPx.EncoderTest do
     end
   end
 
-  defp perform_decoder_test(tmp_dir, input_file, output_file, ref_file, decoder_struct) do
+  defp perform_decoder_test(tmp_dir, input_file, output_file, _ref_file, decoder_struct) do
     output_path = Path.join(tmp_dir, output_file)
     # ref_path = Path.join(@fixtures_dir, ref_file)
 
