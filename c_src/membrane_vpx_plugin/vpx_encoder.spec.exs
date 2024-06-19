@@ -6,9 +6,13 @@ type codec :: :vp8 | :vp9
 
 type pixel_format :: :I420 | :I422 | :I444 | :NV12 | :YV12
 
-type encoding_quality :: :best | :good | :realtime
-
-spec create(codec, width :: unsigned, height :: unsigned, pixel_format, encoding_quality) ::
+spec create(
+       codec,
+       width :: unsigned,
+       height :: unsigned,
+       pixel_format,
+       encoding_deadline :: unsigned
+     ) ::
        {:ok :: label, state} | {:error :: label, reason :: atom}
 
 spec encode_frame(payload, pts :: int64, state) ::

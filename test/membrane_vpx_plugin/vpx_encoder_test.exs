@@ -14,7 +14,7 @@ defmodule Membrane.VPx.EncoderTest do
         "ref_vp8.raw",
         "output_vp8.ivf",
         "ref_vp8.ivf",
-        %Membrane.VP8.Encoder{}
+        %Membrane.VP8.Encoder{encoding_deadline: 0}
       )
     end
 
@@ -24,7 +24,7 @@ defmodule Membrane.VPx.EncoderTest do
         "ref_vp9.ivf",
         "output_vp9.ivf",
         "ref_vp9.ivf",
-        %Membrane.VP9.Encoder{}
+        %Membrane.VP9.Encoder{encoding_deadline: 0}
       )
     end
   end

@@ -9,10 +9,10 @@ void handle_destroy_state(UnifexEnv *env, State *state) {
   vpx_codec_destroy(&state->codec_context);
 }
 
-UNIFEX_TERM error(UnifexEnv *env, const char *reason,
+UNIFEX_TERM error(UnifexEnv *env, const char *reason, int codec_initialized,
                   UNIFEX_TERM (*result_error_fun)(UnifexEnv *, const char *),
                   State *state) {
-  if (&state->codec_context) {
+  if (codec_initialized) {
     const char *detail = vpx_codec_error_detail(&state->codec_context);
     fprintf(stderr, "%s: %s\n", reason, vpx_codec_error(&state->codec_context));
     if (detail) {
@@ -39,20 +39,9 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
   }
 }
 
-int translate_encoding_quality(EncodingQuality encoding_quality) {
-  switch (encoding_quality) {
-  case ENCODING_QUALITY_BEST:
-    return 0;
-  case ENCODING_QUALITY_GOOD:
-    return 1000000;
-  case ENCODING_QUALITY_REALTIME:
-    return 1;
-  }
-}
-
 UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
                    unsigned int height, PixelFormat pixel_format,
-                   EncodingQuality encoding_quality) {
+                   unsigned int encoding_deadline) {
   UNIFEX_TERM result;
   State *state = unifex_alloc_state(env);
   vpx_codec_enc_cfg_t config;
@@ -65,29 +54,29 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
     state->codec_interface = vpx_codec_vp9_cx();
     break;
   }
-  state->encoding_quality = translate_encoding_quality(encoding_quality);
+  state->encoding_deadline = encoding_deadline;
 
   //   return error(env, "Failed to get default codec config", state);
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
-    return error(env, "Failed to get default codec config", create_result_error,
-                 state);
+    return error(env, "Failed to get default codec config", 0,
+                 create_result_error, state);
   }
 
   config.g_h = height;
   config.g_w = width;
   config.g_timebase.num = 1;
   config.g_timebase.den = 1000000000; // 1e9
-  config.rc_target_bitrate = 200;
   config.g_error_resilient = 1;
 
   if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config,
                          0)) {
-    return error(env, "Failed to initialize encoder", create_result_error,
+    return error(env, "Failed to initialize encoder", 0, create_result_error,
                  state);
   }
   if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width,
                      height, 1)) {
-    return error(env, "Failed to allocate image", create_result_error, state);
+    return error(env, "Failed to allocate image", 1, create_result_error,
+                 state);
   }
   result = create_result_ok(env, state);
   unifex_release_state(env, state);
@@ -118,11 +107,12 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts,
 
   do {
     if (vpx_codec_encode(&state->codec_context, img, pts, 1, 0,
-                         state->encoding_quality) != VPX_CODEC_OK) {
+                         state->encoding_deadline) != VPX_CODEC_OK) {
       if (flushing) {
-        return error(env, "Encoding frame failed", flush_result_error, state);
+        return error(env, "Encoding frame failed", 1, flush_result_error,
+                     state);
       } else {
-        return error(env, "Encoding frame failed", encode_frame_result_error,
+        return error(env, "Encoding frame failed", 1, encode_frame_result_error,
                      state);
       }
     }

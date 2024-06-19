@@ -6,9 +6,15 @@ defmodule Membrane.VP9.Encoder do
 
   alias Membrane.{VP9, VPx}
 
-  def_options real_time: [
-                spec: boolean(),
-                default: true
+  def_options encoding_deadline: [
+                spec: non_neg_integer(),
+                default: 1,
+                description: """
+                Determines how long should it take the encoder to encode a frame (in microseconds).
+                The longer the encoding takes the better the quality will be. If set to 0 the
+                encoder will take as long as it needs to produce the best frame possible. Note that
+                this is a soft limit, there is no guarantee that te encoding will never exceed it.
+                """
               ]
 
   def_input_pad :input,

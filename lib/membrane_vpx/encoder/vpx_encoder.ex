@@ -11,10 +11,11 @@ defmodule Membrane.VPx.Encoder do
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
+            encoding_deadline: non_neg_integer(),
             encoder_ref: reference() | nil
           }
 
-    @enforce_keys [:codec, :codec_module]
+    @enforce_keys [:codec, :codec_module, :encoding_deadline]
     defstruct @enforce_keys ++
                 [
                   encoder_ref: nil
@@ -32,7 +33,8 @@ defmodule Membrane.VPx.Encoder do
         case codec do
           :vp8 -> VP8
           :vp9 -> VP9
-        end
+        end,
+      encoding_deadline: opts.encoding_deadline
     }
 
     {[], state}
@@ -56,7 +58,7 @@ defmodule Membrane.VPx.Encoder do
     output_stream_format =
       struct(codec_module, width: width, height: height, framerate: framerate)
 
-    native = Native.create!(state.codec, width, height, pixel_format, :best)
+    native = Native.create!(state.codec, width, height, pixel_format, state.encoding_deadline)
 
     {[stream_format: {:output, output_stream_format}], %{state | encoder_ref: native}}
   end
