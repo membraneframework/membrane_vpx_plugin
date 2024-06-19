@@ -58,14 +58,14 @@ defmodule Membrane.VPx.Encoder do
 
     native = Native.create!(state.codec, width, height, pixel_format)
 
-    {[stream_format: {:output, output_stream_format}], state}
+    {[stream_format: {:output, output_stream_format}], %{state | encoder_ref: native}}
   end
 
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, _ctx, state) do
-    # buffers = Enum.map(decoded_frames, &%Buffer{payload: &1, pts: pts})
-    # {[buffer: {:output, buffers}], state}
-    {[], state}
+    {:ok, encoded_frames} = Native.encode_frame(payload, pts, state.encoder_ref)
+    buffers = Enum.map(encoded_frames, &%Buffer{payload: &1, pts: pts})
+    {[buffer: {:output, buffers}], state}
   end
 end

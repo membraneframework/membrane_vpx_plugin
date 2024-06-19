@@ -10,5 +10,4 @@ typedef struct Dimensions {
 
 Dimensions get_plane_dimensions(const vpx_image_t *img, int plane);
 
-void free_payloads(UnifexEnv *env, UnifexPayload **payloads,
-                   unsigned int payloads_cnt);
+void free_payloads(UnifexPayload **payloads, unsigned int payloads_cnt);

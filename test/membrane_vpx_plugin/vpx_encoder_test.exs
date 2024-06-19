@@ -42,10 +42,16 @@ defmodule Membrane.VPx.EncoderTest do
           |> child(:parser, %Membrane.RawVideo.Parser{
             pixel_format: :I420,
             width: 1080,
-            height: 720
+            height: 720,
+            framerate: {30, 1}
           })
+          |> child(%Membrane.Debug.Filter{handle_buffer: &IO.inspect(&1.pts, label: "pts")})
           |> child(:decoder, decoder_struct)
-          |> child(:serializer, %Membrane.IVF.Serializer{width: 0, height: 0})
+          |> child(:serializer, %Membrane.IVF.Serializer{
+            width: 1080,
+            height: 720,
+            rate: 1_000_000_000
+          })
           |> child(:sink, %Membrane.File.Sink{location: output_path})
       )
 

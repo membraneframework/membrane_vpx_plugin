@@ -49,6 +49,7 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
     break;
   }
 
+  //   return error(env, "Failed to get default codec config", state);
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
     return error(env, "Failed to get default codec config", state);
   }
@@ -81,7 +82,7 @@ void get_image_from_raw_frame(vpx_image_t *img, UnifexPayload *raw_frame) {
   unsigned char *frame_data = raw_frame->data;
 
   for (int plane = 0; plane < number_of_planes; ++plane) {
-    const unsigned char *buf = img->planes[plane];
+    unsigned char *buf = img->planes[plane];
     const int stride = img->stride[plane];
     Dimensions plane_dimensions = get_plane_dimensions(img, plane);
 
@@ -106,7 +107,7 @@ UNIFEX_TERM encode_frame(UnifexEnv *env, UnifexPayload *raw_frame,
   get_image_from_raw_frame(&state->img, raw_frame);
   if (vpx_codec_encode(&state->codec_context, &state->img, pts, 1, 0,
                        VPX_DL_GOOD_QUALITY) != VPX_CODEC_OK) {
-    return error(env, "Failed to encode frame", state);
+    return error(env, "Encoding frame failed", state);
   }
 
   while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) !=
@@ -119,10 +120,10 @@ UNIFEX_TERM encode_frame(UnifexEnv *env, UnifexPayload *raw_frame,
     }
 
     if (packet->kind == VPX_CODEC_CX_FRAME_PKT) {
-      //   const int keyframe = (pkt->data.frame.flags & VPX_FRAME_IS_KEY) != 0;
+      encoded_frames[frames_cnt] = unifex_alloc(sizeof(UnifexPayload));
       unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz,
-                           &encoded_frames[frames_cnt]);
-      memcpy(encoded_frames[frames_cnt], packet->data.frame.buf,
+                           encoded_frames[frames_cnt]);
+      memcpy(encoded_frames[frames_cnt]->data, packet->data.frame.buf,
              packet->data.frame.sz);
       frames_cnt++;
     }
@@ -130,7 +131,7 @@ UNIFEX_TERM encode_frame(UnifexEnv *env, UnifexPayload *raw_frame,
 
   UNIFEX_TERM result = encode_frame_result_ok(env, encoded_frames, frames_cnt);
 
-  free_payloads(env, encoded_frames, frames_cnt);
+  free_payloads(encoded_frames, frames_cnt);
 
   return result;
 }

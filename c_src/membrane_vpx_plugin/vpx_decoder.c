@@ -115,7 +115,7 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
 
   UNIFEX_TERM result = decode_frame_result_ok(env, output_frames, frames_cnt, pixel_format);
 
-  free_payloads(env, output_frames, frames_cnt);
+  free_payloads(output_frames, frames_cnt);
 
   return result;
 }
