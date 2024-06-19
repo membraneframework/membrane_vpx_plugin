@@ -36,6 +36,8 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
     return VPX_IMG_FMT_YV12;
   case PIXEL_FORMAT_NV12:
     return VPX_IMG_FMT_NV12;
+  default:
+    return VPX_IMG_FMT_I420;
   }
 }
 

@@ -31,7 +31,7 @@ defmodule Membrane.VPx.EncoderTest do
 
   defp perform_decoder_test(tmp_dir, input_file, output_file, ref_file, decoder_struct) do
     output_path = Path.join(tmp_dir, output_file)
-    ref_path = Path.join(@fixtures_dir, ref_file)
+    # ref_path = Path.join(@fixtures_dir, ref_file)
 
     pid =
       Membrane.Testing.Pipeline.start_link_supervised!(
