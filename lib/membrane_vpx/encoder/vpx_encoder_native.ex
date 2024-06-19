@@ -4,10 +4,16 @@ defmodule Membrane.VPx.Encoder.Native do
 
   alias Membrane.RawVideo
 
-  @spec create!(:vp8 | :vp9, non_neg_integer(), non_neg_integer(), RawVideo.pixel_format()) ::
+  @spec create!(
+          :vp8 | :vp9,
+          non_neg_integer(),
+          non_neg_integer(),
+          RawVideo.pixel_format(),
+          :best | :good | :realtime
+        ) ::
           reference()
-  def create!(codec, width, height, pixel_format) do
-    case create(codec, width, height, pixel_format) do
+  def create!(codec, width, height, pixel_format, encoding_quality) do
+    case create(codec, width, height, pixel_format, encoding_quality) do
       {:ok, decoder_ref} -> decoder_ref
       {:error, reason} -> raise "Failed to create native encoder: #{inspect(reason)}"
     end

@@ -45,8 +45,9 @@ defmodule Membrane.VPx.EncoderTest do
             height: 720,
             framerate: {30, 1}
           })
-          |> child(%Membrane.Debug.Filter{handle_buffer: &IO.inspect(&1.pts, label: "pts")})
+          # |> child(%Membrane.Debug.Filter{handle_buffer: &IO.inspect(&1.pts, label: "pts1")})
           |> child(:decoder, decoder_struct)
+          # |> child(%Membrane.Debug.Filter{handle_buffer: &IO.inspect(&1.pts, label: "pts2")})
           |> child(:serializer, %Membrane.IVF.Serializer{
             width: 1080,
             height: 720,

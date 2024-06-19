@@ -27,4 +27,7 @@ defmodule Membrane.VP8.Encoder do
 
   @impl true
   defdelegate handle_buffer(pad, buffer, ctx, state), to: VPx.Encoder
+
+  @impl true
+  defdelegate handle_end_of_stream(pad, ctx, state), to: VPx.Encoder
 end

@@ -1,5 +1,8 @@
 #include "vpx_decoder.h"
 
+// The following code is based on the simple_decoder example provided by libvpx
+// (https://github.com/webmproject/libvpx/blob/main/examples/simple_decoder.c)
+
 void handle_destroy_state(UnifexEnv *env, State *state) {
   UNIFEX_UNUSED(env);
 
@@ -42,25 +45,8 @@ size_t get_image_byte_size(const vpx_image_t *img) {
   return image_size;
 }
 
-void get_raw_frame_from_image(const vpx_image_t *img, UnifexPayload *raw_frame) {
-  const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
-
-  // Assuming that for nv12 we write all chroma data at once
-  const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
-  unsigned char *frame_data = raw_frame->data;
-
-  for (int plane = 0; plane < number_of_planes; ++plane) {
-    const unsigned char *buf = img->planes[plane];
-    const int stride = img->stride[plane];
-    Dimensions plane_dimensions = get_plane_dimensions(img, plane);
-
-    for (unsigned int y = 0; y < plane_dimensions.height; ++y) {
-      size_t bytes_to_write = bytes_per_pixel * plane_dimensions.width;
-      memcpy(frame_data, buf, bytes_to_write);
-      buf += stride;
-      frame_data += bytes_to_write;
-    }
-  }
+void get_raw_frame_from_image(vpx_image_t *img, UnifexPayload *raw_frame) {
+  convert_between_image_and_raw_frame(img, raw_frame, IMAGE_TO_RAW_FRAME);
 }
 
 void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img, UnifexPayload **output_frame) {
@@ -72,19 +58,14 @@ PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
   switch (img->fmt) {
   case VPX_IMG_FMT_I422:
     return PIXEL_FORMAT_I422;
-
   case VPX_IMG_FMT_I420:
     return PIXEL_FORMAT_I420;
-
   case VPX_IMG_FMT_I444:
     return PIXEL_FORMAT_I444;
-
   case VPX_IMG_FMT_YV12:
     return PIXEL_FORMAT_YV12;
-
   case VPX_IMG_FMT_NV12:
     return PIXEL_FORMAT_NV12;
-
   default:
     return PIXEL_FORMAT_I420;
   }

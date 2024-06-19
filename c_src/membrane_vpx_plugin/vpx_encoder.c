@@ -1,12 +1,17 @@
 #include "vpx_encoder.h"
 
+// The following code is based on the simple_encoder example provided by libvpx
+// (https://github.com/webmproject/libvpx/blob/main/examples/simple_encoder.c)
+
 void handle_destroy_state(UnifexEnv *env, State *state) {
   UNIFEX_UNUSED(env);
 
   vpx_codec_destroy(&state->codec_context);
 }
 
-UNIFEX_TERM error(UnifexEnv *env, const char *reason, State *state) {
+UNIFEX_TERM error(UnifexEnv *env, const char *reason,
+                  UNIFEX_TERM (*result_error_fun)(UnifexEnv *, const char *),
+                  State *state) {
   if (&state->codec_context) {
     const char *detail = vpx_codec_error_detail(&state->codec_context);
     fprintf(stderr, "%s: %s\n", reason, vpx_codec_error(&state->codec_context));
@@ -14,7 +19,7 @@ UNIFEX_TERM error(UnifexEnv *env, const char *reason, State *state) {
       fprintf(stderr, "    %s\n", detail);
     }
   }
-  UNIFEX_TERM result = create_result_error(env, reason);
+  UNIFEX_TERM result = result_error_fun(env, reason);
   unifex_release_state(env, state);
   return result;
 }
@@ -34,8 +39,20 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
   }
 }
 
+int translate_encoding_quality(EncodingQuality encoding_quality) {
+  switch (encoding_quality) {
+  case ENCODING_QUALITY_BEST:
+    return 0;
+  case ENCODING_QUALITY_GOOD:
+    return 1000000;
+  case ENCODING_QUALITY_REALTIME:
+    return 1;
+  }
+}
+
 UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
-                   unsigned int height, PixelFormat pixel_format) {
+                   unsigned int height, PixelFormat pixel_format,
+                   EncodingQuality encoding_quality) {
   UNIFEX_TERM result;
   State *state = unifex_alloc_state(env);
   vpx_codec_enc_cfg_t config;
@@ -48,10 +65,12 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
     state->codec_interface = vpx_codec_vp9_cx();
     break;
   }
+  state->encoding_quality = translate_encoding_quality(encoding_quality);
 
   //   return error(env, "Failed to get default codec config", state);
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
-    return error(env, "Failed to get default codec config", state);
+    return error(env, "Failed to get default codec config", create_result_error,
+                 state);
   }
 
   config.g_h = height;
@@ -63,11 +82,12 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
 
   if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config,
                          0)) {
-    return error(env, "Failed to initialize encoder", state);
+    return error(env, "Failed to initialize encoder", create_result_error,
+                 state);
   }
   if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width,
                      height, 1)) {
-    return error(env, "Failed to allocate image", state);
+    return error(env, "Failed to allocate image", create_result_error, state);
   }
   result = create_result_ok(env, state);
   unifex_release_state(env, state);
@@ -75,65 +95,81 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
 }
 
 void get_image_from_raw_frame(vpx_image_t *img, UnifexPayload *raw_frame) {
-  const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
-
-  // Assuming that for nv12 we write all chroma data at once
-  const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
-  unsigned char *frame_data = raw_frame->data;
-
-  for (int plane = 0; plane < number_of_planes; ++plane) {
-    unsigned char *buf = img->planes[plane];
-    const int stride = img->stride[plane];
-    Dimensions plane_dimensions = get_plane_dimensions(img, plane);
-
-    for (unsigned int y = 0; y < plane_dimensions.height; ++y) {
-      size_t bytes_to_write = bytes_per_pixel * plane_dimensions.width;
-      memcpy(buf, frame_data, bytes_to_write);
-      buf += stride;
-      frame_data += bytes_to_write;
-    }
-  }
+  convert_between_image_and_raw_frame(img, raw_frame, RAW_FRAME_TO_IMAGE);
 }
 
-UNIFEX_TERM encode_frame(UnifexEnv *env, UnifexPayload *raw_frame,
-                         vpx_codec_pts_t pts, State *state) {
+void alloc_output_frame(UnifexEnv *env, const vpx_codec_cx_pkt_t *packet,
+                        UnifexPayload **output_frame) {
+  *output_frame = unifex_alloc(sizeof(UnifexPayload));
+  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz,
+                       *output_frame);
+}
+
+UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts,
+                   State *state) {
   vpx_codec_iter_t iter = NULL;
-  int got_pkts = 0;
+  int flushing = (img == NULL), got_packets = 0;
   const vpx_codec_cx_pkt_t *packet = NULL;
   unsigned int frames_cnt = 0, max_frames = 2;
   UnifexPayload **encoded_frames =
       unifex_alloc(max_frames * sizeof(*encoded_frames));
+  vpx_codec_pts_t *encoded_frames_timestamps =
+      unifex_alloc(max_frames * sizeof(*encoded_frames_timestamps));
 
-  get_image_from_raw_frame(&state->img, raw_frame);
-  if (vpx_codec_encode(&state->codec_context, &state->img, pts, 1, 0,
-                       VPX_DL_GOOD_QUALITY) != VPX_CODEC_OK) {
-    return error(env, "Encoding frame failed", state);
-  }
-
-  while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) !=
-         NULL) {
-    got_pkts = 1;
-    if (frames_cnt >= max_frames) {
-      max_frames *= 2;
-      encoded_frames =
-          unifex_realloc(encoded_frames, max_frames * sizeof(*encoded_frames));
+  do {
+    if (vpx_codec_encode(&state->codec_context, img, pts, 1, 0,
+                         state->encoding_quality) != VPX_CODEC_OK) {
+      if (flushing) {
+        return error(env, "Encoding frame failed", flush_result_error, state);
+      } else {
+        return error(env, "Encoding frame failed", encode_frame_result_error,
+                     state);
+      }
     }
+    got_packets = 0;
 
-    if (packet->kind == VPX_CODEC_CX_FRAME_PKT) {
-      encoded_frames[frames_cnt] = unifex_alloc(sizeof(UnifexPayload));
-      unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz,
-                           encoded_frames[frames_cnt]);
+    while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) !=
+           NULL) {
+      got_packets = 1;
+      if (packet->kind != VPX_CODEC_CX_FRAME_PKT)
+        continue;
+
+      if (frames_cnt >= max_frames) {
+        max_frames *= 2;
+        encoded_frames = unifex_realloc(encoded_frames,
+                                        max_frames * sizeof(*encoded_frames));
+
+        encoded_frames_timestamps =
+            unifex_realloc(encoded_frames_timestamps,
+                           max_frames * sizeof(*encoded_frames_timestamps));
+      }
+      alloc_output_frame(env, packet, &encoded_frames[frames_cnt]);
       memcpy(encoded_frames[frames_cnt]->data, packet->data.frame.buf,
              packet->data.frame.sz);
+      encoded_frames_timestamps[frames_cnt] = packet->data.frame.pts;
       frames_cnt++;
     }
+  } while (got_packets && flushing);
+
+  UNIFEX_TERM result;
+  if (flushing) {
+    result = flush_result_ok(env, encoded_frames, frames_cnt,
+                             encoded_frames_timestamps, frames_cnt);
+  } else {
+    result = encode_frame_result_ok(env, encoded_frames, frames_cnt,
+                                    encoded_frames_timestamps, frames_cnt);
   }
-
-  UNIFEX_TERM result = encode_frame_result_ok(env, encoded_frames, frames_cnt);
-
   free_payloads(encoded_frames, frames_cnt);
 
   return result;
 }
 
-UNIFEX_TERM flush(UnifexEnv *env, State *state) {}
+UNIFEX_TERM encode_frame(UnifexEnv *env, UnifexPayload *raw_frame,
+                         vpx_codec_pts_t pts, State *state) {
+  get_image_from_raw_frame(&state->img, raw_frame);
+  return encode(env, &state->img, pts, state);
+}
+
+UNIFEX_TERM flush(UnifexEnv *env, State *state) {
+  return encode(env, NULL, 0, state);
+}

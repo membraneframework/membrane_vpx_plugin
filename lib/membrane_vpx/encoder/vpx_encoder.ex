@@ -56,7 +56,7 @@ defmodule Membrane.VPx.Encoder do
     output_stream_format =
       struct(codec_module, width: width, height: height, framerate: framerate)
 
-    native = Native.create!(state.codec, width, height, pixel_format)
+    native = Native.create!(state.codec, width, height, pixel_format, :best)
 
     {[stream_format: {:output, output_stream_format}], %{state | encoder_ref: native}}
   end
@@ -64,8 +64,23 @@ defmodule Membrane.VPx.Encoder do
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, _ctx, state) do
-    {:ok, encoded_frames} = Native.encode_frame(payload, pts, state.encoder_ref)
-    buffers = Enum.map(encoded_frames, &%Buffer{payload: &1, pts: pts})
+    {:ok, encoded_frames, timestamps} = Native.encode_frame(payload, pts, state.encoder_ref)
+
+    buffers =
+      Enum.zip(encoded_frames, timestamps)
+      |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
+
     {[buffer: {:output, buffers}], state}
+  end
+
+  @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
+  def handle_end_of_stream(:input, _ctx, state) do
+    {:ok, encoded_frames, timestamps} = Native.flush(state.encoder_ref)
+
+    buffers =
+      Enum.zip(encoded_frames, timestamps)
+      |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
+
+    {[buffer: {:output, buffers}, end_of_stream: :output], state}
   end
 end
