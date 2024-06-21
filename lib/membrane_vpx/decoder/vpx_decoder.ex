@@ -76,7 +76,7 @@ defmodule Membrane.VPx.Decoder do
   end
 
   @spec get_output_stream_format(
-          %RemoteStream{} | %VP8{} | %VP9{},
+          RemoteStream.t() | VP8.t() | VP9.t(),
           RawVideo.pixel_format(),
           State.t()
         ) :: RawVideo.t()
