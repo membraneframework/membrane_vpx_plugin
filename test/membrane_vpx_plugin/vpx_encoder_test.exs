@@ -9,7 +9,7 @@ defmodule Membrane.VPx.EncoderTest do
   describe "Encoder encodes correctly for" do
     @describetag :tmp_dir
     test "VP8 codec", %{tmp_dir: tmp_dir} do
-      perform_decoder_test(
+      perform_encoder_test(
         tmp_dir,
         "ref_vp8.raw",
         "output_vp8.ivf",
@@ -19,9 +19,9 @@ defmodule Membrane.VPx.EncoderTest do
     end
 
     test "VP9 codec", %{tmp_dir: tmp_dir} do
-      perform_decoder_test(
+      perform_encoder_test(
         tmp_dir,
-        "ref_vp9.ivf",
+        "ref_vp9.raw",
         "output_vp9.ivf",
         "ref_vp9.ivf",
         %Membrane.VP9.Encoder{encoding_deadline: 0}
@@ -29,9 +29,9 @@ defmodule Membrane.VPx.EncoderTest do
     end
   end
 
-  defp perform_decoder_test(tmp_dir, input_file, output_file, _ref_file, decoder_struct) do
+  defp perform_encoder_test(tmp_dir, input_file, output_file, ref_file, encoder_struct) do
     output_path = Path.join(tmp_dir, output_file)
-    # ref_path = Path.join(@fixtures_dir, ref_file)
+    ref_path = Path.join(@fixtures_dir, ref_file)
 
     pid =
       Membrane.Testing.Pipeline.start_link_supervised!(
@@ -45,19 +45,17 @@ defmodule Membrane.VPx.EncoderTest do
             height: 720,
             framerate: {30, 1}
           })
-          # |> child(%Membrane.Debug.Filter{handle_buffer: &IO.inspect(&1.pts, label: "pts1")})
-          |> child(:decoder, decoder_struct)
-          # |> child(%Membrane.Debug.Filter{handle_buffer: &IO.inspect(&1.pts, label: "pts2")})
+          |> child(:encoder, encoder_struct)
           |> child(:serializer, %Membrane.IVF.Serializer{
             width: 1080,
             height: 720,
-            rate: 1_000_000_000
+            timebase: {1, 30}
           })
           |> child(:sink, %Membrane.File.Sink{location: output_path})
       )
 
     assert_end_of_stream(pid, :sink, :input, 2000)
 
-    # assert File.read(ref_path) == File.read(output_path)
+    assert File.read!(ref_path) == File.read!(output_path)
   end
 end

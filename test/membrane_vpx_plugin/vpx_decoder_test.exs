@@ -11,7 +11,7 @@ defmodule Membrane.VPx.DecoderTest do
     test "VP8 codec", %{tmp_dir: tmp_dir} do
       perform_decoder_test(
         tmp_dir,
-        "ref_vp8.ivf",
+        "input_vp8.ivf",
         "output_vp8.raw",
         "ref_vp8.raw",
         %Membrane.VP8.Decoder{framerate: {30, 1}}
@@ -21,7 +21,7 @@ defmodule Membrane.VPx.DecoderTest do
     test "VP9 codec", %{tmp_dir: tmp_dir} do
       perform_decoder_test(
         tmp_dir,
-        "ref_vp9.ivf",
+        "input_vp9.ivf",
         "output_vp9.raw",
         "ref_vp9.raw",
         %Membrane.VP9.Decoder{framerate: {30, 1}}

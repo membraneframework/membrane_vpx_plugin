@@ -75,7 +75,7 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   vpx_codec_iter_t iter = NULL;
   vpx_image_t *img = NULL;
   PixelFormat pixel_format = PIXEL_FORMAT_I420;
-  unsigned int frames_cnt = 0, allocated_frames = 2;
+  unsigned int frames_cnt = 0, allocated_frames = 1;
   UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(*output_frames));
 
   if (vpx_codec_decode(&state->codec_context, frame->data, frame->size, NULL, 0)) {

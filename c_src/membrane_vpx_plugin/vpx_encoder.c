@@ -67,7 +67,6 @@ UNIFEX_TERM create(
   }
   state->encoding_deadline = encoding_deadline;
 
-  //   return error(env, "Failed to get default codec config", state);
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
     return error(env, "Failed to get default codec config", 0, create_result_error, state);
   }
@@ -104,10 +103,11 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
   vpx_codec_iter_t iter = NULL;
   int flushing = (img == NULL), got_packets = 0;
   const vpx_codec_cx_pkt_t *packet = NULL;
-  unsigned int frames_cnt = 0, max_frames = 2;
-  UnifexPayload **encoded_frames = unifex_alloc(max_frames * sizeof(*encoded_frames));
+
+  unsigned int frames_cnt = 0, allocated_frames = 1;
+  UnifexPayload **encoded_frames = unifex_alloc(allocated_frames * sizeof(*encoded_frames));
   vpx_codec_pts_t *encoded_frames_timestamps =
-      unifex_alloc(max_frames * sizeof(*encoded_frames_timestamps));
+      unifex_alloc(allocated_frames * sizeof(*encoded_frames_timestamps));
 
   do {
     if (vpx_codec_encode(&state->codec_context, img, pts, 1, 0, state->encoding_deadline) !=
@@ -125,12 +125,12 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
       if (packet->kind != VPX_CODEC_CX_FRAME_PKT)
         continue;
 
-      if (frames_cnt >= max_frames) {
-        max_frames *= 2;
-        encoded_frames = unifex_realloc(encoded_frames, max_frames * sizeof(*encoded_frames));
+      if (frames_cnt >= allocated_frames) {
+        allocated_frames *= 2;
+        encoded_frames = unifex_realloc(encoded_frames, allocated_frames * sizeof(*encoded_frames));
 
         encoded_frames_timestamps = unifex_realloc(
-            encoded_frames_timestamps, max_frames * sizeof(*encoded_frames_timestamps)
+            encoded_frames_timestamps, allocated_frames * sizeof(*encoded_frames_timestamps)
         );
       }
       alloc_output_frame(env, packet, &encoded_frames[frames_cnt]);
