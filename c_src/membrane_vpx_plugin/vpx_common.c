@@ -7,17 +7,27 @@ UNIFEX_TERM result_error(
     vpx_codec_ctx_t *codec_context,
     void *state
 ) {
+  char *full_reason;
   if (codec_context) {
+    const char *error = vpx_codec_error(codec_context);
     const char *detail = vpx_codec_error_detail(codec_context);
-    fprintf(stderr, "%s: %s\n", reason, vpx_codec_error(codec_context));
     if (detail) {
-      fprintf(stderr, "    %s\n", detail);
+      full_reason = unifex_alloc(strlen(reason) + strlen(error) + strlen(detail) + 5);
+      sprintf(full_reason, "%s: %s: %s", reason, error, detail);
+    } else {
+      full_reason = unifex_alloc(strlen(reason) + strlen(error) + 3);
+      sprintf(full_reason, "%s: %s", reason, error);
     }
+  } else {
+    full_reason = unifex_alloc(strlen(reason) + 1);
+    sprintf(full_reason, "%s", reason);
   }
 
   if (state) unifex_release_resource(state);
 
-  return result_error_fun(env, reason);
+  UNIFEX_TERM result = result_error_fun(env, full_reason);
+  unifex_free(full_reason);
+  return result;
 }
 
 Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
