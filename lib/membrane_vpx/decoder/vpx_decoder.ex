@@ -58,12 +58,7 @@ defmodule Membrane.VPx.Decoder do
 
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
-  def handle_buffer(
-        :input,
-        %Buffer{payload: payload, pts: pts},
-        ctx,
-        %State{codec_module: codec_module} = state
-      ) do
+  def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, ctx, state) do
     {:ok, decoded_frames, pixel_format} = Native.decode_frame(payload, state.decoder_ref)
 
     stream_format_action =
@@ -85,7 +80,11 @@ defmodule Membrane.VPx.Decoder do
           RawVideo.pixel_format(),
           State.t()
         ) :: RawVideo.t()
-  defp get_output_stream_format(input_stream_format, pixel_format, state) do
+  defp get_output_stream_format(
+         input_stream_format,
+         pixel_format,
+         %State{codec_module: codec_module} = state
+       ) do
     {width, height, framerate} =
       case input_stream_format do
         %RemoteStream{} ->
