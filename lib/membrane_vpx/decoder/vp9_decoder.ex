@@ -10,21 +10,21 @@ defmodule Membrane.VP9.Decoder do
                 spec: non_neg_integer() | nil,
                 default: nil,
                 description: """
-                Width of a frame, assumed if not provided with stream format. In case it's not specified in either case the element will crash.
+                Width of a frame, needed if not provided with stream format. If it's not specified either in this option or the stream format, the element will crash.
                 """
               ],
               height: [
                 spec: non_neg_integer() | nil,
                 default: nil,
                 description: """
-                Height of a frame, assumed if not provided with stream format. In case it's not specified in either case the element will crash.
+                Height of a frame, needed if not provided with stream format. If it's not specified either in this option or the stream format, the element will crash.
                 """
               ],
               framerate: [
                 spec: {non_neg_integer(), pos_integer()} | nil,
                 default: nil,
                 description: """
-                Framerate, assumed if not provided with stream format. In case it's not specified in either case the element will crash.
+                Framerate, needed if not provided with stream format. If it's not specified either in this option or the stream format, the element will crash.
                 """
               ]
 

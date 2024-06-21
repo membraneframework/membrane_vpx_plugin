@@ -46,6 +46,6 @@ defmodule Membrane.VPx.DecoderTest do
 
     assert_end_of_stream(pid, :sink, :input, 2000)
 
-    assert File.read(ref_path) == File.read(output_path)
+    assert File.read!(ref_path) == File.read!(output_path)
   end
 end

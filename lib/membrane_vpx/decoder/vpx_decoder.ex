@@ -1,7 +1,7 @@
 defmodule Membrane.VPx.Decoder do
   @moduledoc false
 
-  alias Membrane.{Buffer, VP8, VP9}
+  alias Membrane.{Buffer, RawVideo, RemoteStream, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Decoder.Native
 
@@ -68,32 +68,8 @@ defmodule Membrane.VPx.Decoder do
 
     stream_format_action =
       if ctx.pads.output.stream_format == nil do
-        input_stream_format = ctx.pads.input.stream_format
-
-        {width, height, framerate} =
-          case input_stream_format do
-            %Membrane.RemoteStream{} ->
-              {
-                state.width || raise("Width not provided"),
-                state.height || raise("Height not provided"),
-                state.framerate || raise("Framerate not provided")
-              }
-
-            %^codec_module{width: width, height: height, framerate: framerate} ->
-              {
-                width,
-                height,
-                framerate || state.framerate || raise("Framerate not provided")
-              }
-          end
-
-        output_stream_format = %Membrane.RawVideo{
-          width: width,
-          height: height,
-          framerate: framerate,
-          pixel_format: pixel_format,
-          aligned: true
-        }
+        output_stream_format =
+          get_output_stream_format(ctx.pads.input.stream_format, pixel_format, state)
 
         [stream_format: {:output, output_stream_format}]
       else
@@ -102,5 +78,37 @@ defmodule Membrane.VPx.Decoder do
 
     buffers = Enum.map(decoded_frames, &%Buffer{payload: &1, pts: pts})
     {stream_format_action ++ [buffer: {:output, buffers}], state}
+  end
+
+  @spec get_output_stream_format(
+          %RemoteStream{} | %VP8{} | %VP9{},
+          RawVideo.pixel_format(),
+          State.t()
+        ) :: RawVideo.t()
+  defp get_output_stream_format(input_stream_format, pixel_format, state) do
+    {width, height, framerate} =
+      case input_stream_format do
+        %RemoteStream{} ->
+          {
+            state.width || raise("Width not provided"),
+            state.height || raise("Height not provided"),
+            state.framerate || raise("Framerate not provided")
+          }
+
+        %^codec_module{width: width, height: height, framerate: framerate} ->
+          {
+            width,
+            height,
+            framerate || state.framerate || raise("Framerate not provided")
+          }
+      end
+
+    %RawVideo{
+      width: width,
+      height: height,
+      framerate: framerate,
+      pixel_format: pixel_format,
+      aligned: true
+    }
   end
 end
