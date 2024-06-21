@@ -29,19 +29,6 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec) {
   return result;
 }
 
-Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
-  const int height =
-      (plane > 0 && img->y_chroma_shift > 0) ? (img->d_h + 1) >> img->y_chroma_shift : img->d_h;
-
-  int width =
-      (plane > 0 && img->x_chroma_shift > 0) ? (img->d_w + 1) >> img->x_chroma_shift : img->d_w;
-
-  // Fixing NV12 chroma width if it is odd
-  if (img->fmt == VPX_IMG_FMT_NV12 && plane == 1)
-    width = (width + 1) & ~1;
-
-  return (Dimensions){width, height};
-}
 size_t get_image_byte_size(const vpx_image_t *img) {
   const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
   const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
@@ -55,12 +42,12 @@ size_t get_image_byte_size(const vpx_image_t *img) {
   return image_size;
 }
 
-void get_output_frame_from_image(const vpx_image_t *img, UnifexPayload *output_frame) {
+void get_raw_frame_from_image(const vpx_image_t *img, UnifexPayload *raw_frame) {
   const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
 
   // Assuming that for nv12 we write all chroma data at once
   const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
-  unsigned char *frame_data = output_frame->data;
+  unsigned char *frame_data = raw_frame->data;
 
   for (int plane = 0; plane < number_of_planes; ++plane) {
     const unsigned char *buf = img->planes[plane];
@@ -121,19 +108,14 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
     }
 
     alloc_output_frame(env, img, &output_frames[frames_cnt]);
-    get_output_frame_from_image(img, output_frames[frames_cnt]);
+    get_raw_frame_from_image(img, output_frames[frames_cnt]);
     pixel_format = get_pixel_format_from_image(img);
     frames_cnt++;
   }
 
   UNIFEX_TERM result = decode_frame_result_ok(env, output_frames, frames_cnt, pixel_format);
-  for (unsigned int i = 0; i < frames_cnt; i++) {
-    if (output_frames[i] != NULL) {
-      unifex_payload_release(output_frames[i]);
-      unifex_free(output_frames[i]);
-    }
-  }
-  unifex_free(output_frames);
+
+  free_payloads(env, output_frames, frames_cnt);
 
   return result;
 }

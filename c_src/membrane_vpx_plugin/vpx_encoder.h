@@ -1,6 +1,7 @@
 #pragma once
 #include "vpx/vp8cx.h"
 #include "vpx/vpx_encoder.h"
+#include "vpx_common.h"
 #include <erl_nif.h>
 
 typedef struct State {
