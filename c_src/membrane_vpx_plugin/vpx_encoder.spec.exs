@@ -23,4 +23,4 @@ spec flush(state) ::
        {:ok :: label, frames :: [payload], timestamps :: [int64]}
        | {:error :: label, reason :: atom}
 
-dirty :cpu, encode_frame: 3
+dirty :cpu, create: 5, encode_frame: 3, flush: 1

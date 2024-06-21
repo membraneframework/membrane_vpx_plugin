@@ -23,9 +23,7 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec) {
   }
 
   if (vpx_codec_dec_init(&state->codec_context, state->codec_interface, NULL, 0)) {
-    result = create_result_error(env, "Failed to initialize decoder");
-    unifex_release_state(env, state);
-    return result;
+    return result_error(env, "Failed to initialize decoder", create_result_error, NULL, state);
   }
   result = create_result_ok(env, state);
   unifex_release_state(env, state);
@@ -79,7 +77,9 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(*output_frames));
 
   if (vpx_codec_decode(&state->codec_context, frame->data, frame->size, NULL, 0)) {
-    return decode_frame_result_error(env, "Decoding frame failed");
+    return result_error(
+        env, "Decoding frame failed", decode_frame_result_error, &state->codec_context, NULL
+    );
   }
 
   while ((img = vpx_codec_get_frame(&state->codec_context, &iter)) != NULL) {

@@ -9,25 +9,6 @@ void handle_destroy_state(UnifexEnv *env, State *state) {
   vpx_codec_destroy(&state->codec_context);
 }
 
-UNIFEX_TERM error(
-    UnifexEnv *env,
-    const char *reason,
-    int codec_initialized,
-    UNIFEX_TERM (*result_error_fun)(UnifexEnv *, const char *),
-    State *state
-) {
-  if (codec_initialized) {
-    const char *detail = vpx_codec_error_detail(&state->codec_context);
-    fprintf(stderr, "%s: %s\n", reason, vpx_codec_error(&state->codec_context));
-    if (detail) {
-      fprintf(stderr, "    %s\n", detail);
-    }
-  }
-  UNIFEX_TERM result = result_error_fun(env, reason);
-  unifex_release_state(env, state);
-  return result;
-}
-
 vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
   switch (pixel_format) {
   case PIXEL_FORMAT_I420:
@@ -68,7 +49,9 @@ UNIFEX_TERM create(
   state->encoding_deadline = encoding_deadline;
 
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
-    return error(env, "Failed to get default codec config", 0, create_result_error, state);
+    return result_error(
+        env, "Failed to get default codec config", create_result_error, NULL, state
+    );
   }
 
   config.g_h = height;
@@ -78,10 +61,12 @@ UNIFEX_TERM create(
   config.g_error_resilient = 1;
 
   if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config, 0)) {
-    return error(env, "Failed to initialize encoder", 0, create_result_error, state);
+    return result_error(env, "Failed to initialize encoder", create_result_error, NULL, state);
   }
   if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width, height, 1)) {
-    return error(env, "Failed to allocate image", 1, create_result_error, state);
+    return result_error(
+        env, "Failed to allocate image", create_result_error, &state->codec_context, state
+    );
   }
   result = create_result_ok(env, state);
   unifex_release_state(env, state);
@@ -110,20 +95,29 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
       unifex_alloc(allocated_frames * sizeof(*encoded_frames_timestamps));
 
   do {
+    // Reasoning for the do-while and while loops comes from the description of vpx_codec_encode:
+    //
+    // When the last frame has been passed to the encoder, this function should continue to be
+    // called, with the img parameter set to NULL. This will signal the end-of-stream condition to
+    // the encoder and allow it to encode any held buffers. Encoding is complete when
+    // vpx_codec_encode() is called and vpx_codec_get_cx_data() returns no data.
     if (vpx_codec_encode(&state->codec_context, img, pts, 1, 0, state->encoding_deadline) !=
         VPX_CODEC_OK) {
       if (flushing) {
-        return error(env, "Encoding frame failed", 1, flush_result_error, state);
+        return result_error(
+            env, "Encoding frame failed", flush_result_error, &state->codec_context, NULL
+        );
       } else {
-        return error(env, "Encoding frame failed", 1, encode_frame_result_error, state);
+        return result_error(
+            env, "Encoding frame failed", encode_frame_result_error, &state->codec_context, NULL
+        );
       }
     }
     got_packets = 0;
 
     while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) != NULL) {
       got_packets = 1;
-      if (packet->kind != VPX_CODEC_CX_FRAME_PKT)
-        continue;
+      if (packet->kind != VPX_CODEC_CX_FRAME_PKT) continue;
 
       if (frames_cnt >= allocated_frames) {
         allocated_frames *= 2;
@@ -154,8 +148,9 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
   return result;
 }
 
-UNIFEX_TERM
-encode_frame(UnifexEnv *env, UnifexPayload *raw_frame, vpx_codec_pts_t pts, State *state) {
+UNIFEX_TERM encode_frame(
+    UnifexEnv *env, UnifexPayload *raw_frame, vpx_codec_pts_t pts, State *state
+) {
   get_image_from_raw_frame(&state->img, raw_frame);
   return encode(env, &state->img, pts, state);
 }

@@ -1,5 +1,25 @@
 #include "vpx_common.h"
 
+UNIFEX_TERM result_error(
+    UnifexEnv *env,
+    const char *reason,
+    UNIFEX_TERM (*result_error_fun)(UnifexEnv *, const char *),
+    vpx_codec_ctx_t *codec_context,
+    void *state
+) {
+  if (codec_context) {
+    const char *detail = vpx_codec_error_detail(codec_context);
+    fprintf(stderr, "%s: %s\n", reason, vpx_codec_error(codec_context));
+    if (detail) {
+      fprintf(stderr, "    %s\n", detail);
+    }
+  }
+
+  if (state) unifex_release_resource(state);
+
+  return result_error_fun(env, reason);
+}
+
 Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
   const int height =
       (plane > 0 && img->y_chroma_shift > 0) ? (img->d_h + 1) >> img->y_chroma_shift : img->d_h;
@@ -8,8 +28,7 @@ Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
       (plane > 0 && img->x_chroma_shift > 0) ? (img->d_w + 1) >> img->x_chroma_shift : img->d_w;
 
   // Fixing NV12 chroma width if it is odd
-  if (img->fmt == VPX_IMG_FMT_NV12 && plane == 1)
-    width = (width + 1) & ~1;
+  if (img->fmt == VPX_IMG_FMT_NV12 && plane == 1) width = (width + 1) & ~1;
 
   return (Dimensions){width, height};
 }
