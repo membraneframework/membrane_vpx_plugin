@@ -14,7 +14,7 @@ defmodule Membrane.VPx.DecoderTest do
         "input_vp8.ivf",
         "output_vp8.raw",
         "ref_vp8.raw",
-        %Membrane.VP8.Decoder{framerate: {30, 1}}
+        %Membrane.VP8.Decoder{}
       )
     end
 
@@ -24,7 +24,7 @@ defmodule Membrane.VPx.DecoderTest do
         "input_vp9.ivf",
         "output_vp9.raw",
         "ref_vp9.raw",
-        %Membrane.VP9.Decoder{framerate: {30, 1}}
+        %Membrane.VP9.Decoder{}
       )
     end
   end

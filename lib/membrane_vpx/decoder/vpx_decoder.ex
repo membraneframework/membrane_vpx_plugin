@@ -79,14 +79,14 @@ defmodule Membrane.VPx.Decoder do
           {
             state.width || raise("Width not provided"),
             state.height || raise("Height not provided"),
-            state.framerate || raise("Framerate not provided")
+            state.framerate
           }
 
         %{width: width, height: height, framerate: framerate} ->
           {
             width,
             height,
-            framerate || state.framerate || raise("Framerate not provided")
+            framerate || state.framerate
           }
       end
 

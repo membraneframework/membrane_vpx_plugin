@@ -47,8 +47,6 @@ defmodule Membrane.VPx.EncoderTest do
           })
           |> child(:encoder, encoder_struct)
           |> child(:serializer, %Membrane.IVF.Serializer{
-            width: 1080,
-            height: 720,
             timebase: {1, 30}
           })
           |> child(:sink, %Membrane.File.Sink{location: output_path})
