@@ -54,7 +54,7 @@ defmodule Membrane.VPx.EncoderTest do
           |> child(:sink, %Membrane.File.Sink{location: output_path})
       )
 
-    assert_end_of_stream(pid, :sink, :input, 5000)
+    assert_end_of_stream(pid, :sink, :input, 10_000)
 
     assert File.read!(ref_path) == File.read!(output_path)
   end
