@@ -24,7 +24,7 @@ defmodule Membrane.VP9.Decoder do
                 spec: {non_neg_integer(), pos_integer()} | nil,
                 default: nil,
                 description: """
-                Framerate, needed if not provided with stream format. If it's not specified either in this option or the stream format, the element will crash.
+                Framerate of the stream.
                 """
               ]
 
