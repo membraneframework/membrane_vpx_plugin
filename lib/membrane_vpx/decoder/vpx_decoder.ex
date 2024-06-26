@@ -82,11 +82,11 @@ defmodule Membrane.VPx.Decoder do
             state.framerate
           }
 
-        %{width: width, height: height, framerate: framerate} ->
+        %{width: width, height: height} ->
           {
             width,
             height,
-            framerate || state.framerate
+            state.framerate
           }
       end
 
