@@ -10,14 +10,13 @@ defmodule Membrane.VPx.Decoder do
 
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
-            codec_module: VP8 | VP9,
             width: non_neg_integer() | nil,
             height: non_neg_integer() | nil,
             framerate: {non_neg_integer(), pos_integer()} | nil,
             decoder_ref: reference() | nil
           }
 
-    @enforce_keys [:codec, :codec_module, :width, :height, :framerate]
+    @enforce_keys [:codec, :width, :height, :framerate]
     defstruct @enforce_keys ++
                 [
                   decoder_ref: nil
@@ -33,13 +32,6 @@ defmodule Membrane.VPx.Decoder do
       opts
       |> Map.take([:width, :height, :framerate])
       |> Map.put(:codec, codec)
-      |> Map.put(
-        :codec_module,
-        case codec do
-          :vp8 -> VP8
-          :vp9 -> VP9
-        end
-      )
 
     {[], struct(State, state_fields)}
   end
@@ -80,11 +72,7 @@ defmodule Membrane.VPx.Decoder do
           RawVideo.pixel_format(),
           State.t()
         ) :: RawVideo.t()
-  defp get_output_stream_format(
-         input_stream_format,
-         pixel_format,
-         %State{codec_module: codec_module} = state
-       ) do
+  defp get_output_stream_format(input_stream_format, pixel_format, state) do
     {width, height, framerate} =
       case input_stream_format do
         %RemoteStream{} ->
@@ -94,7 +82,7 @@ defmodule Membrane.VPx.Decoder do
             state.framerate || raise("Framerate not provided")
           }
 
-        %^codec_module{width: width, height: height, framerate: framerate} ->
+        %{width: width, height: height, framerate: framerate} ->
           {
             width,
             height,
