@@ -12,4 +12,4 @@ spec decode_frame(payload, state) ::
        {:ok :: label, frames :: [payload], pixel_format :: pixel_format}
        | {:error :: label, reason :: atom}
 
-dirty :cpu, create: 1, decode_frame: 2
+dirty :cpu, [:create, :decode_frame]

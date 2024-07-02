@@ -90,9 +90,9 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
   const vpx_codec_cx_pkt_t *packet = NULL;
 
   unsigned int frames_cnt = 0, allocated_frames = 1;
-  UnifexPayload **encoded_frames = unifex_alloc(allocated_frames * sizeof(*encoded_frames));
+  UnifexPayload **encoded_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload*));
   vpx_codec_pts_t *encoded_frames_timestamps =
-      unifex_alloc(allocated_frames * sizeof(*encoded_frames_timestamps));
+      unifex_alloc(allocated_frames * sizeof(vpx_codec_pts_t));
 
   do {
     // Reasoning for the do-while and while loops comes from the description of vpx_codec_encode:

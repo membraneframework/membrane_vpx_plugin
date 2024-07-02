@@ -45,7 +45,7 @@ defmodule Membrane.VPx.Encoder do
   def handle_stream_format(
         :input,
         raw_video_format,
-        _ctx,
+        ctx,
         %State{codec_module: codec_module} = state
       ) do
     %RawVideo{
@@ -58,9 +58,28 @@ defmodule Membrane.VPx.Encoder do
     output_stream_format =
       struct(codec_module, width: width, height: height, framerate: framerate)
 
-    native = Native.create!(state.codec, width, height, pixel_format, state.encoding_deadline)
+    {buffers, native} =
+      case ctx.pads.input.stream_format do
+        nil ->
+          native =
+            Native.create!(state.codec, width, height, pixel_format, state.encoding_deadline)
 
-    {[stream_format: {:output, output_stream_format}], %{state | encoder_ref: native}}
+          {[], native}
+
+        %RawVideo{width: ^width, height: ^height, pixel_format: ^pixel_format} ->
+          {[], state.encoder_ref}
+
+        _other_format ->
+          buffers = flush(state.encoder_ref)
+
+          native =
+            Native.create!(state.codec, width, height, pixel_format, state.encoding_deadline)
+
+          {buffers, native}
+      end
+
+    {[buffer: {:output, buffers}, stream_format: {:output, output_stream_format}],
+     %{state | encoder_ref: native}}
   end
 
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
@@ -77,12 +96,15 @@ defmodule Membrane.VPx.Encoder do
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
   def handle_end_of_stream(:input, _ctx, state) do
-    {:ok, encoded_frames, timestamps} = Native.flush(state.encoder_ref)
-
-    buffers =
-      Enum.zip(encoded_frames, timestamps)
-      |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
-
+    buffers = flush(state.encoder_ref)
     {[buffer: {:output, buffers}, end_of_stream: :output], state}
+  end
+
+  @spec flush(reference()) :: [Membrane.Buffer.t()]
+  defp flush(encoder_ref) do
+    {:ok, encoded_frames, timestamps} = Native.flush(encoder_ref)
+
+    Enum.zip(encoded_frames, timestamps)
+    |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
   end
 end
