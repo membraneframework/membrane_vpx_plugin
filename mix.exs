@@ -40,7 +40,7 @@ defmodule Membrane.VPx.Plugin.Mixfile do
     [
       {:membrane_core, "~> 1.0"},
       {:unifex, "~> 1.2"},
-      {:membrane_raw_video_format, "~> 0.4.0", override: true},
+      {:membrane_raw_video_format, "~> 0.4.0"},
       {:membrane_vp8_format, "~> 0.5.0"},
       {:membrane_vp9_format, "~> 0.5.0"},
       {:membrane_precompiled_dependency_provider, "~> 0.1.0"},
