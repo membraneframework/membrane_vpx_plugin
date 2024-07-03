@@ -44,51 +44,23 @@ defmodule Membrane.VPx.Encoder do
 
   @spec handle_stream_format(:input, RawVideo.t(), CallbackContext.t(), State.t()) ::
           callback_return()
-  def handle_stream_format(
-        :input,
-        raw_video_format,
-        ctx,
-        %State{codec_module: codec_module} = state
-      ) do
+  def handle_stream_format(:input, stream_format, ctx, state) do
     %RawVideo{
       width: width,
       height: height,
-      framerate: framerate,
-      pixel_format: pixel_format
-    } = raw_video_format
+      framerate: framerate
+    } = stream_format
 
     output_stream_format =
-      struct(codec_module, width: width, height: height, framerate: framerate)
+      struct(state.codec_module, width: width, height: height, framerate: framerate)
 
-    encoding_deadline =
-      case {state.encoding_deadline, framerate} do
-        {:auto, nil} -> @default_encoding_deadline |> Membrane.Time.as_microseconds(:round)
-        {:auto, {num, denom}} -> div(denom * 1_000_000, num)
-        {fixed_deadline, _framerate} -> fixed_deadline |> Membrane.Time.as_microseconds(:round)
-      end
+    {flushed_buffers, encoder_ref} =
+      maybe_recreate_encoder(ctx.pads.input.stream_format, stream_format, state)
 
-    {buffers, encoder_ref} =
-      case ctx.pads.input.stream_format do
-        ^raw_video_format ->
-          {[], state.encoder_ref}
-
-        nil ->
-          encoder_ref =
-            Native.create!(state.codec, width, height, pixel_format, encoding_deadline)
-
-          {[], encoder_ref}
-
-        _changed_format ->
-          buffers = flush(state.encoder_ref)
-
-          encoder_ref =
-            Native.create!(state.codec, width, height, pixel_format, encoding_deadline)
-
-          {buffers, encoder_ref}
-      end
-
-    {[buffer: {:output, buffers}, stream_format: {:output, output_stream_format}],
-     %{state | encoder_ref: encoder_ref}}
+    {
+      [buffer: {:output, flushed_buffers}, stream_format: {:output, output_stream_format}],
+      %{state | encoder_ref: encoder_ref}
+    }
   end
 
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
@@ -107,6 +79,39 @@ defmodule Membrane.VPx.Encoder do
   def handle_end_of_stream(:input, _ctx, state) do
     buffers = flush(state.encoder_ref)
     {[buffer: {:output, buffers}, end_of_stream: :output], state}
+  end
+
+  @spec maybe_recreate_encoder(
+          previous_stream_format :: RawVideo.t(),
+          new_stream_format :: RawVideo.t(),
+          State.t()
+        ) :: {flushed_buffers :: [Buffer.t()], encoder_ref :: reference()}
+  defp maybe_recreate_encoder(unchanged_stream_format, unchanged_stream_format, state) do
+    {[], state.encoder_ref}
+  end
+
+  defp maybe_recreate_encoder(_previous_stream_format, new_stream_format, state) do
+    %RawVideo{
+      width: width,
+      height: height,
+      framerate: framerate,
+      pixel_format: pixel_format
+    } = new_stream_format
+
+    encoding_deadline =
+      case {state.encoding_deadline, framerate} do
+        {:auto, nil} -> @default_encoding_deadline |> Membrane.Time.as_microseconds(:round)
+        {:auto, {num, denom}} -> div(denom * 1_000_000, num)
+        {fixed_deadline, _framerate} -> fixed_deadline |> Membrane.Time.as_microseconds(:round)
+      end
+
+    new_encoder_ref =
+      Native.create!(state.codec, width, height, pixel_format, encoding_deadline)
+
+    case state.encoder_ref do
+      nil -> {[], new_encoder_ref}
+      old_encoder_ref -> {flush(old_encoder_ref), new_encoder_ref}
+    end
   end
 
   @spec flush(reference()) :: [Membrane.Buffer.t()]
