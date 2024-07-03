@@ -7,14 +7,15 @@ defmodule Membrane.VP8.Encoder do
   alias Membrane.{VP8, VPx}
 
   def_options encoding_deadline: [
-                spec: Membrane.Time.t(),
-                default: Membrane.Time.microsecond(),
-                inspector: &Membrane.Time.inspect/1,
+                spec: Membrane.Time.t() | :auto,
+                default: :auto,
                 description: """
                 Determines how long should it take the encoder to encode a frame.
                 The longer the encoding takes the better the quality will be. If set to 0 the
                 encoder will take as long as it needs to produce the best frame possible. Note that
                 this is a soft limit, there is no guarantee that the encoding process will never exceed it.
+                If set to `:auto` the deadline will be calculated based on the framerate provided by
+                incoming stream format. If it's `nil` a fixed deadline of 10ms will be set.
                 """
               ]
 
