@@ -15,7 +15,7 @@ defmodule Membrane.VP8.Encoder do
                 encoder will take as long as it needs to produce the best frame possible. Note that
                 this is a soft limit, there is no guarantee that the encoding process will never exceed it.
                 If set to `:auto` the deadline will be calculated based on the framerate provided by
-                incoming stream format. If it's `nil` a fixed deadline of 10ms will be set.
+                incoming stream format. If the framerate is `nil`, a fixed deadline of 10ms will be set.
                 """
               ]
 
