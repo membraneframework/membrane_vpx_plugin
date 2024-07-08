@@ -83,7 +83,7 @@ defmodule Membrane.VPx.Plugin.Mixfile do
       extras: ["README.md", "LICENSE"],
       formatters: ["html"],
       source_ref: "v#{@version}",
-      nest_modules_by_prefix: [Membrane.VPX]
+      nest_modules_by_prefix: [Membrane.VPx]
     ]
   end
 end

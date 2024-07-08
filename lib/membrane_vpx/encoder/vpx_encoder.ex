@@ -1,7 +1,7 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
 
-  alias Membrane.{Buffer, RawVideo, VP8, VP9}
+  alias Membrane.{Buffer, DemandKeyframeEvent, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Encoder.Native
 
@@ -73,6 +73,11 @@ defmodule Membrane.VPx.Encoder do
       |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
 
     {[buffer: {:output, buffers}], state}
+  end
+
+  @spec handle_event(:output, DemandKeyframeEvent.t(), CallbackContext.t(), State.t()) ::
+          callback_return()
+  def handle_event(:output, %DemandKeyframeEvent{}, _ctx, state) do
   end
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
