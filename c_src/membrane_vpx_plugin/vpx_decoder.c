@@ -1,5 +1,8 @@
 #include "vpx_decoder.h"
 
+// The following code is based on the simple_decoder example provided by libvpx
+// (https://github.com/webmproject/libvpx/blob/main/examples/simple_decoder.c)
+
 void handle_destroy_state(UnifexEnv *env, State *state) {
   UNIFEX_UNUSED(env);
 
@@ -20,28 +23,13 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec) {
   }
 
   if (vpx_codec_dec_init(&state->codec_context, state->codec_interface, NULL, 0)) {
-    result = create_result_error(env, "Failed to initialize decoder");
-    unifex_release_state(env, state);
-    return result;
+    return result_error(env, "Failed to initialize decoder", create_result_error, NULL, state);
   }
   result = create_result_ok(env, state);
   unifex_release_state(env, state);
   return result;
 }
 
-Dimensions get_plane_dimensions(const vpx_image_t *img, int plane) {
-  const int height =
-      (plane > 0 && img->y_chroma_shift > 0) ? (img->d_h + 1) >> img->y_chroma_shift : img->d_h;
-
-  int width =
-      (plane > 0 && img->x_chroma_shift > 0) ? (img->d_w + 1) >> img->x_chroma_shift : img->d_w;
-
-  // Fixing NV12 chroma width if it is odd
-  if (img->fmt == VPX_IMG_FMT_NV12 && plane == 1)
-    width = (width + 1) & ~1;
-
-  return (Dimensions){width, height};
-}
 size_t get_image_byte_size(const vpx_image_t *img) {
   const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
   const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
@@ -55,25 +43,8 @@ size_t get_image_byte_size(const vpx_image_t *img) {
   return image_size;
 }
 
-void get_output_frame_from_image(const vpx_image_t *img, UnifexPayload *output_frame) {
-  const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
-
-  // Assuming that for nv12 we write all chroma data at once
-  const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
-  unsigned char *frame_data = output_frame->data;
-
-  for (int plane = 0; plane < number_of_planes; ++plane) {
-    const unsigned char *buf = img->planes[plane];
-    const int stride = img->stride[plane];
-    Dimensions plane_dimensions = get_plane_dimensions(img, plane);
-
-    for (unsigned int y = 0; y < plane_dimensions.height; ++y) {
-      size_t bytes_to_write = bytes_per_pixel * plane_dimensions.width;
-      memcpy(frame_data, buf, bytes_to_write);
-      buf += stride;
-      frame_data += bytes_to_write;
-    }
-  }
+void get_raw_frame_from_image(vpx_image_t *img, UnifexPayload *raw_frame) {
+  convert_between_image_and_raw_frame(img, raw_frame, IMAGE_TO_RAW_FRAME);
 }
 
 void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img, UnifexPayload **output_frame) {
@@ -85,19 +56,14 @@ PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
   switch (img->fmt) {
   case VPX_IMG_FMT_I422:
     return PIXEL_FORMAT_I422;
-
   case VPX_IMG_FMT_I420:
     return PIXEL_FORMAT_I420;
-
   case VPX_IMG_FMT_I444:
     return PIXEL_FORMAT_I444;
-
   case VPX_IMG_FMT_YV12:
     return PIXEL_FORMAT_YV12;
-
   case VPX_IMG_FMT_NV12:
     return PIXEL_FORMAT_NV12;
-
   default:
     return PIXEL_FORMAT_I420;
   }
@@ -107,11 +73,13 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   vpx_codec_iter_t iter = NULL;
   vpx_image_t *img = NULL;
   PixelFormat pixel_format = PIXEL_FORMAT_I420;
-  unsigned int frames_cnt = 0, allocated_frames = 2;
-  UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(*output_frames));
+  unsigned int frames_cnt = 0, allocated_frames = 1;
+  UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload*));
 
   if (vpx_codec_decode(&state->codec_context, frame->data, frame->size, NULL, 0)) {
-    return decode_frame_result_error(env, "Decoding frame failed");
+    return result_error(
+        env, "Decoding frame failed", decode_frame_result_error, &state->codec_context, NULL
+    );
   }
 
   while ((img = vpx_codec_get_frame(&state->codec_context, &iter)) != NULL) {
@@ -121,19 +89,14 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
     }
 
     alloc_output_frame(env, img, &output_frames[frames_cnt]);
-    get_output_frame_from_image(img, output_frames[frames_cnt]);
+    get_raw_frame_from_image(img, output_frames[frames_cnt]);
     pixel_format = get_pixel_format_from_image(img);
     frames_cnt++;
   }
 
   UNIFEX_TERM result = decode_frame_result_ok(env, output_frames, frames_cnt, pixel_format);
-  for (unsigned int i = 0; i < frames_cnt; i++) {
-    if (output_frames[i] != NULL) {
-      unifex_payload_release(output_frames[i]);
-      unifex_free(output_frames[i]);
-    }
-  }
-  unifex_free(output_frames);
+
+  free_payloads(output_frames, frames_cnt);
 
   return result;
 }

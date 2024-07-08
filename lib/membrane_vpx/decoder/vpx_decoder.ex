@@ -10,9 +10,9 @@ defmodule Membrane.VPx.Decoder do
 
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
-            width: non_neg_integer() | nil,
-            height: non_neg_integer() | nil,
-            framerate: {non_neg_integer(), pos_integer()} | nil,
+            width: pos_integer() | nil,
+            height: pos_integer() | nil,
+            framerate: {pos_integer(), pos_integer()} | nil,
             decoder_ref: reference() | nil
           }
 
@@ -51,7 +51,7 @@ defmodule Membrane.VPx.Decoder do
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, ctx, state) do
-    {:ok, decoded_frames, pixel_format} = Native.decode_frame(payload, state.decoder_ref)
+    {:ok, [decoded_frame], pixel_format} = Native.decode_frame(payload, state.decoder_ref)
 
     stream_format_action =
       if ctx.pads.output.stream_format == nil do
@@ -63,8 +63,8 @@ defmodule Membrane.VPx.Decoder do
         []
       end
 
-    buffers = Enum.map(decoded_frames, &%Buffer{payload: &1, pts: pts})
-    {stream_format_action ++ [buffer: {:output, buffers}], state}
+    {stream_format_action ++ [buffer: {:output, %Buffer{payload: decoded_frame, pts: pts}}],
+     state}
   end
 
   @spec get_output_stream_format(
@@ -79,14 +79,14 @@ defmodule Membrane.VPx.Decoder do
           {
             state.width || raise("Width not provided"),
             state.height || raise("Height not provided"),
-            state.framerate || raise("Framerate not provided")
+            state.framerate
           }
 
-        %{width: width, height: height, framerate: framerate} ->
+        %{width: width, height: height} ->
           {
             width,
             height,
-            framerate || state.framerate || raise("Framerate not provided")
+            state.framerate
           }
       end
 

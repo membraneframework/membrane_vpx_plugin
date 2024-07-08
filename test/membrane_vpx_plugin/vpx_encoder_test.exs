@@ -1,4 +1,4 @@
-defmodule Membrane.VPx.DecoderTest do
+defmodule Membrane.VPx.EncoderTest do
   use ExUnit.Case, async: true
 
   import Membrane.Testing.Assertions
@@ -6,30 +6,30 @@ defmodule Membrane.VPx.DecoderTest do
 
   @fixtures_dir "test/fixtures"
 
-  describe "Decoder decodes correctly for" do
+  describe "Encoder encodes correctly for" do
     @describetag :tmp_dir
     test "VP8 codec", %{tmp_dir: tmp_dir} do
-      perform_decoder_test(
+      perform_encoder_test(
         tmp_dir,
-        "input_vp8.ivf",
-        "output_vp8.raw",
         "ref_vp8.raw",
-        %Membrane.VP8.Decoder{}
+        "output_vp8.ivf",
+        "ref_vp8.ivf",
+        %Membrane.VP8.Encoder{encoding_deadline: 0}
       )
     end
 
     test "VP9 codec", %{tmp_dir: tmp_dir} do
-      perform_decoder_test(
+      perform_encoder_test(
         tmp_dir,
-        "input_vp9.ivf",
-        "output_vp9.raw",
         "ref_vp9.raw",
-        %Membrane.VP9.Decoder{}
+        "output_vp9.ivf",
+        "ref_vp9.ivf",
+        %Membrane.VP9.Encoder{encoding_deadline: 0}
       )
     end
   end
 
-  defp perform_decoder_test(tmp_dir, input_file, output_file, ref_file, decoder_struct) do
+  defp perform_encoder_test(tmp_dir, input_file, output_file, ref_file, encoder_struct) do
     output_path = Path.join(tmp_dir, output_file)
     ref_path = Path.join(@fixtures_dir, ref_file)
 
@@ -39,12 +39,20 @@ defmodule Membrane.VPx.DecoderTest do
           child(:source, %Membrane.File.Source{
             location: Path.join(@fixtures_dir, input_file)
           })
-          |> child(:deserializer, Membrane.IVF.Deserializer)
-          |> child(:decoder, decoder_struct)
+          |> child(:parser, %Membrane.RawVideo.Parser{
+            pixel_format: :I420,
+            width: 1080,
+            height: 720,
+            framerate: {30, 1}
+          })
+          |> child(:encoder, encoder_struct)
+          |> child(:serializer, %Membrane.IVF.Serializer{
+            timebase: {1, 30}
+          })
           |> child(:sink, %Membrane.File.Sink{location: output_path})
       )
 
-    assert_end_of_stream(pid, :sink, :input, 2000)
+    assert_end_of_stream(pid, :sink, :input, 10_000)
 
     assert File.read!(ref_path) == File.read!(output_path)
 
