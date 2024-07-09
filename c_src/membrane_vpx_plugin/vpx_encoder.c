@@ -26,14 +26,9 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
   }
 }
 
-UNIFEX_TERM create(
-    UnifexEnv *env,
-    Codec codec,
-    unsigned int width,
-    unsigned int height,
-    PixelFormat pixel_format,
-    unsigned int encoding_deadline
-) {
+UNIFEX_TERM create(UnifexEnv *env, Codec codec, unsigned int width,
+                   unsigned int height, PixelFormat pixel_format,
+                   unsigned int encoding_deadline) {
   UNIFEX_TERM result;
   State *state = unifex_alloc_state(env);
   vpx_codec_enc_cfg_t config;
@@ -49,9 +44,8 @@ UNIFEX_TERM create(
   state->encoding_deadline = encoding_deadline;
 
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
-    return result_error(
-        env, "Failed to get default codec config", create_result_error, NULL, state
-    );
+    return result_error(env, "Failed to get default codec config",
+                        create_result_error, NULL, state);
   }
 
   config.g_h = height;
@@ -60,13 +54,15 @@ UNIFEX_TERM create(
   config.g_timebase.den = 1000000000; // 1e9
   config.g_error_resilient = 1;
 
-  if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config, 0)) {
-    return result_error(env, "Failed to initialize encoder", create_result_error, NULL, state);
+  if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config,
+                         0)) {
+    return result_error(env, "Failed to initialize encoder",
+                        create_result_error, NULL, state);
   }
-  if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width, height, 1)) {
-    return result_error(
-        env, "Failed to allocate image", create_result_error, &state->codec_context, state
-    );
+  if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width,
+                     height, 1)) {
+    return result_error(env, "Failed to allocate image", create_result_error,
+                        &state->codec_context, state);
   }
   result = create_result_ok(env, state);
   unifex_release_state(env, state);
@@ -77,58 +73,67 @@ void get_image_from_raw_frame(vpx_image_t *img, UnifexPayload *raw_frame) {
   convert_between_image_and_raw_frame(img, raw_frame, RAW_FRAME_TO_IMAGE);
 }
 
-void alloc_output_frame(
-    UnifexEnv *env, const vpx_codec_cx_pkt_t *packet, UnifexPayload **output_frame
-) {
+void alloc_output_frame(UnifexEnv *env, const vpx_codec_cx_pkt_t *packet,
+                        UnifexPayload **output_frame) {
   *output_frame = unifex_alloc(sizeof(UnifexPayload));
-  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz, *output_frame);
+  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz,
+                       *output_frame);
 }
 
-UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State *state) {
+UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts,
+                   int force_keyframe, State *state) {
   vpx_codec_iter_t iter = NULL;
   int flushing = (img == NULL), got_packets = 0;
   const vpx_codec_cx_pkt_t *packet = NULL;
 
   unsigned int frames_cnt = 0, allocated_frames = 1;
-  UnifexPayload **encoded_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload*));
+  UnifexPayload **encoded_frames =
+      unifex_alloc(allocated_frames * sizeof(UnifexPayload *));
   vpx_codec_pts_t *encoded_frames_timestamps =
       unifex_alloc(allocated_frames * sizeof(vpx_codec_pts_t));
 
   do {
-    // Reasoning for the do-while and while loops comes from the description of vpx_codec_encode:
+    // Reasoning for the do-while and while loops comes from the description of
+    // vpx_codec_encode:
     //
-    // When the last frame has been passed to the encoder, this function should continue to be
-    // called, with the img parameter set to NULL. This will signal the end-of-stream condition to
-    // the encoder and allow it to encode any held buffers. Encoding is complete when
-    // vpx_codec_encode() is called and vpx_codec_get_cx_data() returns no data.
-    if (vpx_codec_encode(&state->codec_context, img, pts, 1, 0, state->encoding_deadline) !=
-        VPX_CODEC_OK) {
+    // When the last frame has been passed to the encoder, this function should
+    // continue to be called, with the img parameter set to NULL. This will
+    // signal the end-of-stream condition to the encoder and allow it to encode
+    // any held buffers. Encoding is complete when vpx_codec_encode() is called
+    // and vpx_codec_get_cx_data() returns no data.
+    vpx_enc_frame_flags_t flags = force_keyframe ? VPX_EFLAG_FORCE_KF : 0;
+    if (vpx_codec_encode(&state->codec_context, img, pts, 1, flags,
+                         state->encoding_deadline) != VPX_CODEC_OK) {
       if (flushing) {
-        return result_error(
-            env, "Encoding frame failed", flush_result_error, &state->codec_context, NULL
-        );
+        return result_error(env, "Encoding frame failed", flush_result_error,
+                            &state->codec_context, NULL);
       } else {
-        return result_error(
-            env, "Encoding frame failed", encode_frame_result_error, &state->codec_context, NULL
-        );
+        return result_error(env, "Encoding frame failed",
+                            encode_frame_result_error, &state->codec_context,
+                            NULL);
       }
     }
+    force_keyframe = 0;
     got_packets = 0;
 
-    while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) != NULL) {
+    while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) !=
+           NULL) {
       got_packets = 1;
-      if (packet->kind != VPX_CODEC_CX_FRAME_PKT) continue;
+      if (packet->kind != VPX_CODEC_CX_FRAME_PKT)
+        continue;
 
       if (frames_cnt >= allocated_frames) {
         allocated_frames *= 2;
-        encoded_frames = unifex_realloc(encoded_frames, allocated_frames * sizeof(*encoded_frames));
+        encoded_frames = unifex_realloc(
+            encoded_frames, allocated_frames * sizeof(*encoded_frames));
 
         encoded_frames_timestamps = unifex_realloc(
-            encoded_frames_timestamps, allocated_frames * sizeof(*encoded_frames_timestamps)
-        );
+            encoded_frames_timestamps,
+            allocated_frames * sizeof(*encoded_frames_timestamps));
       }
       alloc_output_frame(env, packet, &encoded_frames[frames_cnt]);
-      memcpy(encoded_frames[frames_cnt]->data, packet->data.frame.buf, packet->data.frame.sz);
+      memcpy(encoded_frames[frames_cnt]->data, packet->data.frame.buf,
+             packet->data.frame.sz);
       encoded_frames_timestamps[frames_cnt] = packet->data.frame.pts;
       frames_cnt++;
     }
@@ -136,23 +141,24 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
 
   UNIFEX_TERM result;
   if (flushing) {
-    result =
-        flush_result_ok(env, encoded_frames, frames_cnt, encoded_frames_timestamps, frames_cnt);
+    result = flush_result_ok(env, encoded_frames, frames_cnt,
+                             encoded_frames_timestamps, frames_cnt);
   } else {
-    result = encode_frame_result_ok(
-        env, encoded_frames, frames_cnt, encoded_frames_timestamps, frames_cnt
-    );
+    result = encode_frame_result_ok(env, encoded_frames, frames_cnt,
+                                    encoded_frames_timestamps, frames_cnt);
   }
   free_payloads(encoded_frames, frames_cnt);
 
   return result;
 }
 
-UNIFEX_TERM encode_frame(
-    UnifexEnv *env, UnifexPayload *raw_frame, vpx_codec_pts_t pts, State *state
-) {
+UNIFEX_TERM encode_frame(UnifexEnv *env, UnifexPayload *raw_frame,
+                         vpx_codec_pts_t pts, int force_keyframe,
+                         State *state) {
   get_image_from_raw_frame(&state->img, raw_frame);
-  return encode(env, &state->img, pts, state);
+  return encode(env, &state->img, pts, force_keyframe, state);
 }
 
-UNIFEX_TERM flush(UnifexEnv *env, State *state) { return encode(env, NULL, 0, state); }
+UNIFEX_TERM flush(UnifexEnv *env, int force_keyframe, State *state) {
+  return encode(env, NULL, 0, force_keyframe, state);
+}

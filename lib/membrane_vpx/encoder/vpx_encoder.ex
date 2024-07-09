@@ -1,7 +1,7 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
 
-  alias Membrane.{Buffer, DemandKeyframeEvent, RawVideo, VP8, VP9}
+  alias Membrane.{Buffer, ForceKeyframeEvent, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Encoder.Native
 
@@ -14,13 +14,15 @@ defmodule Membrane.VPx.Encoder do
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
             encoding_deadline: non_neg_integer(),
-            encoder_ref: reference() | nil
+            encoder_ref: reference() | nil,
+            force_next_keyframe: boolean()
           }
 
     @enforce_keys [:codec, :codec_module, :encoding_deadline]
     defstruct @enforce_keys ++
                 [
-                  encoder_ref: nil
+                  encoder_ref: nil,
+                  force_next_keyframe: false
                 ]
   end
 
@@ -57,32 +59,36 @@ defmodule Membrane.VPx.Encoder do
     {flushed_buffers, encoder_ref} =
       maybe_recreate_encoder(ctx.pads.input.stream_format, stream_format, state)
 
+    force_next_keyframe = if flushed_buffers == [], do: state.force_next_keyframe, else: false
+
     {
       [buffer: {:output, flushed_buffers}, stream_format: {:output, output_stream_format}],
-      %{state | encoder_ref: encoder_ref}
+      %{state | encoder_ref: encoder_ref, force_next_keyframe: force_next_keyframe}
     }
   end
 
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, _ctx, state) do
-    {:ok, encoded_frames, timestamps} = Native.encode_frame(payload, pts, state.encoder_ref)
+    {:ok, encoded_frames, timestamps} =
+      Native.encode_frame(payload, pts, state.force_next_keyframe, state.encoder_ref)
 
     buffers =
       Enum.zip(encoded_frames, timestamps)
       |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
 
-    {[buffer: {:output, buffers}], state}
+    {[buffer: {:output, buffers}], %{state | force_next_keyframe: false}}
   end
 
-  @spec handle_event(:output, DemandKeyframeEvent.t(), CallbackContext.t(), State.t()) ::
+  @spec handle_event(:output, ForceKeyframeEvent.t(), CallbackContext.t(), State.t()) ::
           callback_return()
-  def handle_event(:output, %DemandKeyframeEvent{}, _ctx, state) do
+  def handle_event(:output, %ForceKeyframeEvent{}, _ctx, state) do
+    {[], %{state | force_next_keyframe: true}}
   end
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
   def handle_end_of_stream(:input, _ctx, state) do
-    buffers = flush(state.encoder_ref)
+    buffers = flush(state.force_next_keyframe, state.encoder_ref)
     {[buffer: {:output, buffers}, end_of_stream: :output], state}
   end
 
@@ -115,13 +121,13 @@ defmodule Membrane.VPx.Encoder do
 
     case state.encoder_ref do
       nil -> {[], new_encoder_ref}
-      old_encoder_ref -> {flush(old_encoder_ref), new_encoder_ref}
+      old_encoder_ref -> {flush(state.force_next_keyframe, old_encoder_ref), new_encoder_ref}
     end
   end
 
-  @spec flush(reference()) :: [Membrane.Buffer.t()]
-  defp flush(encoder_ref) do
-    {:ok, encoded_frames, timestamps} = Native.flush(encoder_ref)
+  @spec flush(boolean(), reference()) :: [Membrane.Buffer.t()]
+  defp flush(force_next_keyframe, encoder_ref) do
+    {:ok, encoded_frames, timestamps} = Native.flush(force_next_keyframe, encoder_ref)
 
     Enum.zip(encoded_frames, timestamps)
     |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)

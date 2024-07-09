@@ -15,11 +15,11 @@ spec create(
      ) ::
        {:ok :: label, state} | {:error :: label, reason :: atom}
 
-spec encode_frame(payload, pts :: int64, state) ::
+spec encode_frame(payload, pts :: int64, force_keyframe :: bool, state) ::
        {:ok :: label, frames :: [payload], timestamps :: [int64]}
        | {:error :: label, reason :: atom}
 
-spec flush(state) ::
+spec flush(force_keyframe :: bool, state) ::
        {:ok :: label, frames :: [payload], timestamps :: [int64]}
        | {:error :: label, reason :: atom}
 
