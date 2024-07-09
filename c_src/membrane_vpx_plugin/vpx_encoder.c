@@ -1,4 +1,5 @@
 #include "vpx_encoder.h"
+#include <stdio.h>
 
 // The following code is based on the simple_encoder example provided by libvpx
 // (https://github.com/webmproject/libvpx/blob/main/examples/simple_encoder.c)

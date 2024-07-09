@@ -1,9 +1,10 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
 
-  alias Membrane.{Buffer, ForceKeyframeEvent, RawVideo, VP8, VP9}
+  alias Membrane.{Buffer, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Encoder.Native
+  alias Membrane.VPx.ForceKeyframeEvent
 
   @default_encoding_deadline Membrane.Time.milliseconds(10)
 
@@ -27,6 +28,11 @@ defmodule Membrane.VPx.Encoder do
   end
 
   @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
+
+  @spec dupa() :: :ok
+  def dupa() do
+    :ok
+  end
 
   @spec handle_init(CallbackContext.t(), VP8.Encoder.t() | VP9.Encoder.t(), :vp8 | :vp9) ::
           callback_return()

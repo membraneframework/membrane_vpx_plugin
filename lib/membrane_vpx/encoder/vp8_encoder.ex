@@ -1,6 +1,9 @@
 defmodule Membrane.VP8.Encoder do
   @moduledoc """
-  Element that encodes a VP8 stream
+  Element that encodes a VP8 stream.
+
+  This element can receive a `Membrane.VPx.ForceKeyframeEvent` on it's `:output` pad to force the
+  next frame to be a keyframe.
   """
   use Membrane.Filter
 
@@ -35,6 +38,9 @@ defmodule Membrane.VP8.Encoder do
 
   @impl true
   defdelegate handle_buffer(pad, buffer, ctx, state), to: VPx.Encoder
+
+  @impl true
+  defdelegate handle_event(pad, event, ctx, state), to: VPx.Encoder
 
   @impl true
   defdelegate handle_end_of_stream(pad, ctx, state), to: VPx.Encoder
