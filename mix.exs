@@ -1,7 +1,7 @@
 defmodule Membrane.VPx.Plugin.Mixfile do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.1"
   @github_url "https://github.com/membraneframework/membrane_vpx_plugin"
 
   def project do
@@ -73,7 +73,9 @@ defmodule Membrane.VPx.Plugin.Mixfile do
       links: %{
         "GitHub" => @github_url,
         "Membrane Framework Homepage" => "https://membrane.stream"
-      }
+      },
+      files: ["lib", "mix.exs", "README*", "LICENSE*", ".formatter.exs", "bundlex.exs", "c_src"],
+      exclude_patterns: [~r"c_src/.*/_generated.*"]
     ]
   end
 
