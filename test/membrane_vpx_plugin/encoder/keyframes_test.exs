@@ -41,14 +41,14 @@ defmodule Membrane.VPx.KeyframesTest do
     test "VP8 codec" do
       perform_test(
         "ref_vp8.raw",
-        %Membrane.VP8.Encoder{encoding_deadline: 0}
+        %Membrane.VP8.Encoder{encoding_deadline: 1}
       )
     end
 
     test "VP9 codec" do
       perform_test(
         "ref_vp9.raw",
-        %Membrane.VP9.Encoder{encoding_deadline: 0}
+        %Membrane.VP9.Encoder{encoding_deadline: 1}
       )
     end
   end
