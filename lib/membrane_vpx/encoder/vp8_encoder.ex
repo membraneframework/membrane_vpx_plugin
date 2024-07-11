@@ -26,6 +26,13 @@ defmodule Membrane.VP8.Encoder do
                 If set to `:auto` the deadline will be calculated based on the framerate provided by
                 incoming stream format. If the framerate is `nil` a fixed deadline of 10ms will be set.
                 """
+              ],
+              target_bitrate: [
+                spec: pos_integer(),
+                default: 1000,
+                description: """
+                Gives the encoder information about the target bitrate (in kb/s).
+                """
               ]
 
   def_input_pad :input,

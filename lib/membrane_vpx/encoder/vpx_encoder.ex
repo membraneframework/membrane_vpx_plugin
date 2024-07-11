@@ -14,11 +14,12 @@ defmodule Membrane.VPx.Encoder do
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
             encoding_deadline: non_neg_integer(),
+            target_bitrate: pos_integer(),
             encoder_ref: reference() | nil,
             force_next_keyframe: boolean()
           }
 
-    @enforce_keys [:codec, :codec_module, :encoding_deadline]
+    @enforce_keys [:codec, :codec_module, :encoding_deadline, :target_bitrate]
     defstruct @enforce_keys ++
                 [
                   encoder_ref: nil,
@@ -27,6 +28,14 @@ defmodule Membrane.VPx.Encoder do
   end
 
   @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
+
+  @type encoder_options :: %{
+          width: pos_integer(),
+          height: pos_integer(),
+          pixel_format: Membrane.RawVideo.pixel_format(),
+          encoding_deadline: non_neg_integer(),
+          target_bitrate: pos_integer()
+        }
 
   @spec handle_init(CallbackContext.t(), VP8.Encoder.t() | VP9.Encoder.t(), :vp8 | :vp9) ::
           callback_return()
@@ -39,7 +48,8 @@ defmodule Membrane.VPx.Encoder do
           :vp8 -> VP8
           :vp9 -> VP9
         end,
-      encoding_deadline: opts.encoding_deadline
+      encoding_deadline: opts.encoding_deadline,
+      target_bitrate: opts.target_bitrate
     }
 
     {[], state}
@@ -115,8 +125,15 @@ defmodule Membrane.VPx.Encoder do
         {fixed_deadline, _framerate} -> fixed_deadline |> Membrane.Time.as_microseconds(:round)
       end
 
-    new_encoder_ref =
-      Native.create!(state.codec, width, height, pixel_format, encoding_deadline)
+    encoder_options = %{
+      width: width,
+      height: height,
+      pixel_format: pixel_format,
+      encoding_deadline: encoding_deadline,
+      target_bitrate: state.target_bitrate
+    }
+
+    new_encoder_ref = Native.create!(state.codec, encoder_options)
 
     case state.encoder_ref do
       nil ->

@@ -29,14 +29,7 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
   }
 }
 
-UNIFEX_TERM create(
-    UnifexEnv *env,
-    Codec codec,
-    unsigned int width,
-    unsigned int height,
-    PixelFormat pixel_format,
-    unsigned int encoding_deadline
-) {
+UNIFEX_TERM create(UnifexEnv *env, Codec codec, encoder_options opts) {
   UNIFEX_TERM result;
   State *state = unifex_alloc_state(env);
   vpx_codec_enc_cfg_t config;
@@ -49,7 +42,7 @@ UNIFEX_TERM create(
     state->codec_interface = vpx_codec_vp9_cx();
     break;
   }
-  state->encoding_deadline = encoding_deadline;
+  state->encoding_deadline = opts.encoding_deadline;
 
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
     return result_error(
@@ -57,8 +50,9 @@ UNIFEX_TERM create(
     );
   }
 
-  config.g_h = height;
-  config.g_w = width;
+  config.g_h = opts.height;
+  config.g_w = opts.width;
+  config.rc_target_bitrate = opts.target_bitrate;
   config.g_timebase.num = 1;
   config.g_timebase.den = 1000000000; // 1e9
   config.g_error_resilient = 1;
@@ -66,7 +60,9 @@ UNIFEX_TERM create(
   if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config, 0)) {
     return result_error(env, "Failed to initialize encoder", create_result_error, NULL, state);
   }
-  if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width, height, 1)) {
+  if (!vpx_img_alloc(
+          &state->img, translate_pixel_format(opts.pixel_format), opts.width, opts.height, 1
+      )) {
     return result_error(
         env, "Failed to allocate image", create_result_error, &state->codec_context, state
     );
