@@ -52,7 +52,15 @@ void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img, UnifexPayload **
   unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, get_image_byte_size(img), *output_frame);
 }
 
-void free_payloads(UnifexPayload **payloads, unsigned int payloads_cnt);
+void free_payloads(UnifexPayload **payloads, unsigned int payloads_cnt) {
+  for (unsigned int i = 0; i < payloads_cnt; i++) {
+    if (payloads[i] != NULL) {
+      unifex_payload_release(payloads[i]);
+      unifex_free(payloads[i]);
+    }
+  }
+  unifex_free(payloads);
+}
 
 PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
   switch (img->fmt) {
