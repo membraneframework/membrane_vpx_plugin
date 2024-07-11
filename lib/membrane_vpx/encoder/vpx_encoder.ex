@@ -1,10 +1,9 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
 
-  alias Membrane.{Buffer, RawVideo, VP8, VP9}
+  alias Membrane.{Buffer, KeyframeRequestEvent, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Encoder.Native
-  alias Membrane.VPx.ForceKeyframeEvent
 
   @default_encoding_deadline Membrane.Time.milliseconds(10)
 
@@ -29,13 +28,9 @@ defmodule Membrane.VPx.Encoder do
 
   @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
 
-  @spec dupa() :: :ok
-  def dupa() do
-    :ok
-  end
-
   @spec handle_init(CallbackContext.t(), VP8.Encoder.t() | VP9.Encoder.t(), :vp8 | :vp9) ::
           callback_return()
+
   def handle_init(_ctx, opts, codec) do
     state = %State{
       codec: codec,
@@ -76,25 +71,23 @@ defmodule Membrane.VPx.Encoder do
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, _ctx, state) do
-    {:ok, encoded_frames, timestamps} =
+    {:ok, encoded_frames} =
       Native.encode_frame(payload, pts, state.force_next_keyframe, state.encoder_ref)
 
-    buffers =
-      Enum.zip(encoded_frames, timestamps)
-      |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
+    buffers = get_buffers_from_frames(encoded_frames, state.codec)
 
     {[buffer: {:output, buffers}], %{state | force_next_keyframe: false}}
   end
 
-  @spec handle_event(:output, ForceKeyframeEvent.t(), CallbackContext.t(), State.t()) ::
+  @spec handle_event(:output, KeyframeRequestEvent.t(), CallbackContext.t(), State.t()) ::
           callback_return()
-  def handle_event(:output, %ForceKeyframeEvent{}, _ctx, state) do
+  def handle_event(:output, %KeyframeRequestEvent{}, _ctx, state) do
     {[], %{state | force_next_keyframe: true}}
   end
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
   def handle_end_of_stream(:input, _ctx, state) do
-    buffers = flush(state.force_next_keyframe, state.encoder_ref)
+    buffers = flush(state.force_next_keyframe, state.encoder_ref, state.codec)
     {[buffer: {:output, buffers}, end_of_stream: :output], state}
   end
 
@@ -126,16 +119,29 @@ defmodule Membrane.VPx.Encoder do
       Native.create!(state.codec, width, height, pixel_format, encoding_deadline)
 
     case state.encoder_ref do
-      nil -> {[], new_encoder_ref}
-      old_encoder_ref -> {flush(state.force_next_keyframe, old_encoder_ref), new_encoder_ref}
+      nil ->
+        {[], new_encoder_ref}
+
+      old_encoder_ref ->
+        {flush(state.force_next_keyframe, old_encoder_ref, state.codec), new_encoder_ref}
     end
   end
 
-  @spec flush(boolean(), reference()) :: [Membrane.Buffer.t()]
-  defp flush(force_next_keyframe, encoder_ref) do
-    {:ok, encoded_frames, timestamps} = Native.flush(force_next_keyframe, encoder_ref)
+  @spec flush(boolean(), reference(), :vp8 | :vp9) :: [Membrane.Buffer.t()]
+  defp flush(force_next_keyframe, encoder_ref, codec) do
+    {:ok, encoded_frames} = Native.flush(force_next_keyframe, encoder_ref)
 
-    Enum.zip(encoded_frames, timestamps)
-    |> Enum.map(fn {frame, frame_pts} -> %Buffer{payload: frame, pts: frame_pts} end)
+    get_buffers_from_frames(encoded_frames, codec)
+  end
+
+  @spec get_buffers_from_frames([EncodedFrame.t()], :vp8 | :vp9) :: [Buffer.t()]
+  def get_buffers_from_frames(encoded_frames, codec) do
+    Enum.map(encoded_frames, fn %{payload: payload, pts: pts, is_keyframe: is_keyframe} ->
+      %Buffer{
+        payload: payload,
+        pts: pts,
+        metadata: %{codec => %{is_keyframe: is_keyframe}}
+      }
+    end)
   end
 end

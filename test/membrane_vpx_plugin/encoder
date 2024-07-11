@@ -1,13 +1,12 @@
-defmodule Membrane.VPx.ForceKeyframeEventTest do
+defmodule Membrane.VPx.KeyframesTest do
   use ExUnit.Case, async: true
 
   import Membrane.Testing.Assertions
   import Membrane.ChildrenSpec
 
-  defmodule KeyframeForcer do
+  defmodule KeyframeRequester do
     use Membrane.Filter
-    alias Membrane.VPx.ForceKeyframeEvent
-    alias Membrane.{VP8, VP9}
+    alias Membrane.{KeyframeRequestEvent, VP8, VP9}
 
     def_input_pad :input,
       accepted_format: any_of(VP8, VP9)
@@ -23,8 +22,8 @@ defmodule Membrane.VPx.ForceKeyframeEventTest do
     @impl true
     def handle_buffer(:input, buffer, _ctx, state) do
       {maybe_event_action, frames_since_last_keyframe} =
-        if state.frames_since_last_keyframe == 10 do
-          {[event: {:input, %ForceKeyframeEvent{}}], 0}
+        if state.frames_since_last_keyframe == 4 do
+          {[event: {:input, %KeyframeRequestEvent{}}], 0}
         else
           {[], state.frames_since_last_keyframe + 1}
         end
@@ -69,8 +68,8 @@ defmodule Membrane.VPx.ForceKeyframeEventTest do
           })
           |> child(:realtimer, Membrane.Realtimer)
           |> child(:encoder, encoder_struct)
-          |> child(:keyframe_forcer, KeyframeForcer)
-          |> child(:sink, Membrane.Fake.Sink.Buffers)
+          |> child(:keyframe_forcer, KeyframeRequester)
+          |> child(:sink, Membrane.Testing.Sink)
       )
 
     assert_end_of_stream(pid, :sink, :input, 10_000)

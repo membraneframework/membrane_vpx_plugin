@@ -73,13 +73,3 @@ void convert_between_image_and_raw_frame(
     }
   }
 }
-
-void free_payloads(UnifexPayload **payloads, unsigned int payloads_cnt) {
-  for (unsigned int i = 0; i < payloads_cnt; i++) {
-    if (payloads[i] != NULL) {
-      unifex_payload_release(payloads[i]);
-      unifex_free(payloads[i]);
-    }
-  }
-  unifex_free(payloads);
-}
