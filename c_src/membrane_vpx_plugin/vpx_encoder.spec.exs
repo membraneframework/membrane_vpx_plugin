@@ -7,10 +7,10 @@ type codec :: :vp8 | :vp9
 type pixel_format :: :I420 | :I422 | :I444 | :NV12 | :YV12
 
 type encoded_frame :: %EncodedFrame{
-  payload: payload,
-  pts: int64,
-  is_keyframe: bool
-}
+       payload: payload,
+       pts: int64,
+       is_keyframe: bool
+     }
 
 spec create(
        codec,
