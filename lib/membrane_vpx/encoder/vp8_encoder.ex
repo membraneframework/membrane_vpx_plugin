@@ -4,6 +4,12 @@ defmodule Membrane.VP8.Encoder do
 
   This element can receive a `Membrane.VPx.ForceKeyframeEvent` on it's `:output` pad to force the
   next frame to be a keyframe.
+
+  Buffers produced by this element will have the following metadata that inform whether the buffer
+  contains a keyframe:
+  ```elixir
+  %{vp8: %{is_keyframe: is_keyframe :: boolean()}}
+  ```
   """
   use Membrane.Filter
 
