@@ -28,10 +28,13 @@ defmodule Membrane.VP9.Encoder do
                 """
               ],
               target_bitrate: [
-                spec: pos_integer(),
-                default: 1000,
+                spec: pos_integer() | :auto,
+                default: :auto,
                 description: """
-                Gives the encoder information about the target bitrate (in kb/s).
+                Gives the encoder information about the target bitrate (in kb/s). If set to `:auto`
+                the target bitrate will be calculated automatically based on the resolution and framerate
+                of the incoming stream. Some reference recommended bitrates can be also found
+                [here](https://support.google.com/youtube/answer/1722171#zippy=%2Cbitrate)
                 """
               ]
 
