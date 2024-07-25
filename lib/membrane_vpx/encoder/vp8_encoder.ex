@@ -2,7 +2,7 @@ defmodule Membrane.VP8.Encoder do
   @moduledoc """
   Element that encodes a VP8 stream.
 
-  This element can receive a `Membrane.VPx.ForceKeyframeEvent` on it's `:output` pad to force the
+  This element can receive a `Membrane.KeyframeRequestEvent` on it's `:output` pad to force the
   next frame to be a keyframe.
 
   Buffers produced by this element will have the following metadata that inform whether the buffer

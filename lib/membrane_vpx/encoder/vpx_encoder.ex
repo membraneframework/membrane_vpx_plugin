@@ -37,6 +37,8 @@ defmodule Membrane.VPx.Encoder do
           target_bitrate: pos_integer()
         }
 
+  @type encoded_frame :: %{payload: binary(), pts: non_neg_integer(), is_keyframe: boolean()}
+
   @spec handle_init(CallbackContext.t(), VP8.Encoder.t() | VP9.Encoder.t(), :vp8 | :vp9) ::
           callback_return()
 
@@ -151,12 +153,12 @@ defmodule Membrane.VPx.Encoder do
     get_buffers_from_frames(encoded_frames, codec)
   end
 
-  @spec get_buffers_from_frames([EncodedFrame.t()], :vp8 | :vp9) :: [Buffer.t()]
+  @spec get_buffers_from_frames([encoded_frame()], :vp8 | :vp9) :: [Buffer.t()]
   def get_buffers_from_frames(encoded_frames, codec) do
     Enum.map(encoded_frames, fn %{payload: payload, pts: pts, is_keyframe: is_keyframe} ->
       %Buffer{
         payload: payload,
-        pts: pts,
+        pts: Membrane.Time.nanoseconds(pts),
         metadata: %{codec => %{is_keyframe: is_keyframe}}
       }
     end)
