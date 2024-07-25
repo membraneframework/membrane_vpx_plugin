@@ -27,7 +27,7 @@ defmodule Membrane.VP8.Encoder do
                 incoming stream format. If the framerate is `nil` a fixed deadline of 10ms will be set.
                 """
               ],
-              target_bitrate: [
+              rc_target_bitrate: [
                 spec: pos_integer() | :auto,
                 default: :auto,
                 description: """

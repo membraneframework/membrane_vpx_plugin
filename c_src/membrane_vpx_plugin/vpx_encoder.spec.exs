@@ -17,7 +17,7 @@ type encoder_options :: %EncoderOptions{
        height: unsigned,
        pixel_format: pixel_format,
        encoding_deadline: unsigned,
-       target_bitrate: unsigned
+       rc_target_bitrate: unsigned
      }
 
 spec create(codec, encoder_options) ::

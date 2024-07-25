@@ -52,7 +52,7 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, encoder_options opts) {
 
   config.g_h = opts.height;
   config.g_w = opts.width;
-  config.rc_target_bitrate = opts.target_bitrate;
+  config.rc_target_bitrate = opts.rc_target_bitrate;
   config.g_timebase.num = 1;
   config.g_timebase.den = 1000000000; // 1e9
   config.g_error_resilient = 1;
