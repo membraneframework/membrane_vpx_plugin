@@ -36,6 +36,13 @@ defmodule Membrane.VP8.Encoder do
                 of the incoming stream. Some reference recommended bitrates can be also found
                 [here](https://support.google.com/youtube/answer/1722171#zippy=%2Cbitrate)
                 """
+              ],
+              g_lag_in_frames: [
+                spec: non_neg_integer(),
+                default: 5,
+                description: """
+
+                """
               ]
 
   def_input_pad :input,

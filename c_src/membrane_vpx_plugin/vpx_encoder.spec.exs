@@ -12,16 +12,19 @@ type encoded_frame :: %EncodedFrame{
        is_keyframe: bool
      }
 
-type encoder_options :: %EncoderOptions{
-       width: unsigned,
-       height: unsigned,
-       pixel_format: pixel_format,
-       encoding_deadline: unsigned,
+type user_encoder_config :: %UserEncoderConfig{
+       g_lag_in_frames: unsigned,
        rc_target_bitrate: unsigned
      }
 
-spec create(codec, encoder_options) ::
-       {:ok :: label, state} | {:error :: label, reason :: atom}
+spec create(
+       codec,
+       width :: unsigned,
+       height :: unsigned,
+       pixel_format,
+       encoding_deadline :: unsigned,
+       user_encoder_config
+     ) :: {:ok :: label, state} | {:error :: label, reason :: atom}
 
 spec encode_frame(payload, pts :: int64, force_keyframe :: bool, state) ::
        {:ok :: label, frames :: [encoded_frame]}
