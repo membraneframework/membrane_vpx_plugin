@@ -6,6 +6,7 @@ defmodule Membrane.VPx.Encoder do
   alias Membrane.VPx.Encoder.Native
 
   @default_encoding_deadline Membrane.Time.milliseconds(10)
+  @bitrate_calculation_coefficient 0.14
 
   defmodule State do
     @moduledoc false
@@ -161,7 +162,7 @@ defmodule Membrane.VPx.Encoder do
         {framerate_num, framerate_denom} -> framerate_num / framerate_denom
       end
 
-    (0.14 * width * height * assumed_fps) |> trunc() |> div(1000)
+    (@bitrate_calculation_coefficient * width * height * assumed_fps) |> trunc() |> div(1000)
   end
 
   defp get_target_bitrate(provided_bitrate, _width, _height, _framerate) do
