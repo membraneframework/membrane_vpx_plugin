@@ -24,7 +24,7 @@ defmodule Membrane.VPx.Encoder do
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
             encoding_deadline: non_neg_integer() | :auto,
-            user_encoder_config: Membrane.Vpx.Encoder.unprocessed_user_encoder_config(),
+            user_encoder_config: Membrane.VPx.Encoder.unprocessed_user_encoder_config(),
             encoder_ref: reference() | nil,
             force_next_keyframe: boolean()
           }
