@@ -8,6 +8,10 @@ defmodule Membrane.VPx.Encoder do
   @default_encoding_deadline Membrane.Time.milliseconds(10)
   @bitrate_calculation_coefficient 0.14
 
+  @type unprocessed_user_encoder_config :: %{
+          g_lag_in_frames: non_neg_integer(),
+          rc_target_bitrate: pos_integer() | :auto
+        }
   @type user_encoder_config :: %{
           g_lag_in_frames: non_neg_integer(),
           rc_target_bitrate: pos_integer()
@@ -19,8 +23,8 @@ defmodule Membrane.VPx.Encoder do
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
-            encoding_deadline: non_neg_integer(),
-            user_encoder_config: Membrane.Vpx.Encoder.user_encoder_config(),
+            encoding_deadline: non_neg_integer() | :auto,
+            user_encoder_config: Membrane.Vpx.Encoder.unprocessed_user_encoder_config(),
             encoder_ref: reference() | nil,
             force_next_keyframe: boolean()
           }
@@ -128,8 +132,8 @@ defmodule Membrane.VPx.Encoder do
         {fixed_deadline, _framerate} -> fixed_deadline |> Membrane.Time.as_microseconds(:round)
       end
 
-    rc_target_bitrate =
-      get_actual_rc_target_bitrate(state.rc_target_bitrate, width, height, framerate)
+    user_encoder_config =
+      process_user_encoder_config(state.user_encoder_config, width, height, framerate)
 
     new_encoder_ref =
       Native.create!(
@@ -138,7 +142,7 @@ defmodule Membrane.VPx.Encoder do
         height,
         pixel_format,
         encoding_deadline,
-        state.user_encoder_config
+        user_encoder_config
       )
 
     case state.encoder_ref do
@@ -150,13 +154,29 @@ defmodule Membrane.VPx.Encoder do
     end
   end
 
-  @spec get_actual_rc_target_bitrate(
+  @spec process_user_encoder_config(
+          unprocessed_user_encoder_config(),
+          pos_integer(),
+          pos_integer(),
+          {non_neg_integer(), pos_integer()} | nil
+        ) :: user_encoder_config()
+  defp process_user_encoder_config(user_encoder_config, width, height, framerate) do
+    rc_target_bitrate =
+      process_rc_target_bitrate(user_encoder_config.rc_target_bitrate, width, height, framerate)
+
+    %{
+      g_lag_in_frames: user_encoder_config.g_lag_in_frames,
+      rc_target_bitrate: rc_target_bitrate
+    }
+  end
+
+  @spec process_rc_target_bitrate(
           pos_integer() | :auto,
           pos_integer(),
           pos_integer(),
           {non_neg_integer(), pos_integer()} | nil
         ) :: pos_integer()
-  defp get_actual_rc_target_bitrate(:auto, width, height, framerate) do
+  defp process_rc_target_bitrate(:auto, width, height, framerate) do
     assumed_fps =
       case framerate do
         nil -> 30.0
@@ -166,7 +186,7 @@ defmodule Membrane.VPx.Encoder do
     (@bitrate_calculation_coefficient * width * height * assumed_fps) |> trunc() |> div(1000)
   end
 
-  defp get_actual_rc_target_bitrate(provided_bitrate, _width, _height, _framerate) do
+  defp process_rc_target_bitrate(provided_bitrate, _width, _height, _framerate) do
     provided_bitrate
   end
 

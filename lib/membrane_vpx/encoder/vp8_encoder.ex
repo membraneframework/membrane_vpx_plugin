@@ -41,7 +41,14 @@ defmodule Membrane.VP8.Encoder do
                 spec: non_neg_integer(),
                 default: 5,
                 description: """
+                The number of input frames the encoder is allowed to consume
+                before producing output frames. This allows the encoder to
+                base decisions for the current frame on future frames. This does
+                increase the latency of the encoding pipeline, so it is not appropriate
+                in all situations (ex: realtime encoding).
 
+                Note that this is a maximum value -- the encoder may produce frames
+                sooner than the given limit. If set to 0 this feature will be disabled.
                 """
               ]
 
