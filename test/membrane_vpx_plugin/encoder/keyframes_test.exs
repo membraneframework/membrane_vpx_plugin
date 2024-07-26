@@ -41,19 +41,21 @@ defmodule Membrane.VPx.KeyframesTest do
     test "VP8 codec" do
       perform_test(
         "ref_vp8.raw",
-        %Membrane.VP8.Encoder{encoding_deadline: 1}
+        %Membrane.VP8.Encoder{encoding_deadline: 1, g_lag_in_frames: 0},
+        :vp8
       )
     end
 
     test "VP9 codec" do
       perform_test(
         "ref_vp9.raw",
-        %Membrane.VP9.Encoder{encoding_deadline: 1}
+        %Membrane.VP9.Encoder{encoding_deadline: 1, g_lag_in_frames: 0},
+        :vp9
       )
     end
   end
 
-  defp perform_test(input_file, encoder_struct) do
+  defp perform_test(input_file, encoder_struct, metadata_key) do
     pid =
       Membrane.Testing.Pipeline.start_link_supervised!(
         spec:
@@ -64,13 +66,19 @@ defmodule Membrane.VPx.KeyframesTest do
             pixel_format: :I420,
             width: 1080,
             height: 720,
-            framerate: {30, 1}
+            framerate: {20, 1}
           })
           |> child(:realtimer, Membrane.Realtimer)
           |> child(:encoder, encoder_struct)
           |> child(:keyframe_forcer, KeyframeRequester)
           |> child(:sink, Membrane.Testing.Sink)
       )
+
+    Enum.each(1..6, fn _n ->
+      assert_sink_buffer(pid, :sink, %Membrane.Buffer{
+        metadata: %{^metadata_key => %{is_keyframe: true}}
+      })
+    end)
 
     assert_end_of_stream(pid, :sink, :input, 10_000)
 
