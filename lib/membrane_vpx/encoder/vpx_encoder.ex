@@ -89,7 +89,7 @@ defmodule Membrane.VPx.Encoder do
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
   def handle_end_of_stream(:input, _ctx, state) do
-    buffers = flush(state.force_next_keyframe, state.encoder_ref, state.codec)
+    buffers = flush(state.encoder_ref, state.codec)
     {[buffer: {:output, buffers}, end_of_stream: :output], state}
   end
 
@@ -125,13 +125,13 @@ defmodule Membrane.VPx.Encoder do
         {[], new_encoder_ref}
 
       old_encoder_ref ->
-        {flush(state.force_next_keyframe, old_encoder_ref, state.codec), new_encoder_ref}
+        {flush(old_encoder_ref, state.codec), new_encoder_ref}
     end
   end
 
-  @spec flush(boolean(), reference(), :vp8 | :vp9) :: [Membrane.Buffer.t()]
-  defp flush(force_next_keyframe, encoder_ref, codec) do
-    {:ok, encoded_frames} = Native.flush(force_next_keyframe, encoder_ref)
+  @spec flush(reference(), :vp8 | :vp9) :: [Membrane.Buffer.t()]
+  defp flush(encoder_ref, codec) do
+    {:ok, encoded_frames} = Native.flush(encoder_ref)
 
     get_buffers_from_frames(encoded_frames, codec)
   end

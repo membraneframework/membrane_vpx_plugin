@@ -169,6 +169,4 @@ UNIFEX_TERM encode_frame(
   return encode(env, &state->img, pts, force_keyframe, state);
 }
 
-UNIFEX_TERM flush(UnifexEnv *env, int force_keyframe, State *state) {
-  return encode(env, NULL, 0, force_keyframe, state);
-}
+UNIFEX_TERM flush(UnifexEnv *env, State *state) { return encode(env, NULL, 0, 0, state); }
