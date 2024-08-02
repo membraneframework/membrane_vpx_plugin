@@ -30,7 +30,7 @@ spec encode_frame(payload, pts :: int64, force_keyframe :: bool, state) ::
        {:ok :: label, frames :: [encoded_frame]}
        | {:error :: label, reason :: atom}
 
-spec flush(force_keyframe :: bool, state) ::
+spec flush(state) ::
        {:ok :: label, frames :: [encoded_frame]}
        | {:error :: label, reason :: atom}
 
