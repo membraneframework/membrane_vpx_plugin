@@ -1,6 +1,15 @@
 defmodule Membrane.VP9.Encoder do
   @moduledoc """
-  Element that encodes a VP9 stream
+  Element that encodes a VP9 stream.
+
+  This element can receive a `Membrane.KeyframeRequestEvent` on it's `:output` pad to force the
+  next frame to be a keyframe.
+
+  Buffers produced by this element will have the following metadata that inform whether the buffer
+  contains a keyframe:
+  ```elixir
+  %{vp9: %{is_keyframe: is_keyframe :: boolean()}}
+  ```
   """
   use Membrane.Filter
 
@@ -35,6 +44,9 @@ defmodule Membrane.VP9.Encoder do
 
   @impl true
   defdelegate handle_buffer(pad, buffer, ctx, state), to: VPx.Encoder
+
+  @impl true
+  defdelegate handle_event(pad, event, ctx, state), to: VPx.Encoder
 
   @impl true
   defdelegate handle_end_of_stream(pad, ctx, state), to: VPx.Encoder

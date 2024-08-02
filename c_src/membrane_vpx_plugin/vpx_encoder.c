@@ -1,4 +1,7 @@
 #include "vpx_encoder.h"
+#include "membrane_vpx_plugin/_generated/nif/vpx_encoder.h"
+#include "unifex/payload.h"
+#include <stdio.h>
 
 // The following code is based on the simple_encoder example provided by libvpx
 // (https://github.com/webmproject/libvpx/blob/main/examples/simple_encoder.c)
@@ -78,30 +81,44 @@ void get_image_from_raw_frame(vpx_image_t *img, UnifexPayload *raw_frame) {
 }
 
 void alloc_output_frame(
-    UnifexEnv *env, const vpx_codec_cx_pkt_t *packet, UnifexPayload **output_frame
+    UnifexEnv *env, const vpx_codec_cx_pkt_t *packet, encoded_frame *output_frame
 ) {
-  *output_frame = unifex_alloc(sizeof(UnifexPayload));
-  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz, *output_frame);
+  output_frame->payload = unifex_alloc(sizeof(UnifexPayload));
+  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, packet->data.frame.sz, output_frame->payload);
 }
 
-UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State *state) {
+void free_frames(encoded_frame *frames, unsigned int frames_cnt) {
+  for (unsigned int i = 0; i < frames_cnt; i++) {
+    UnifexPayload *payload = frames[i].payload;
+    if (payload != NULL) {
+      unifex_payload_release(payload);
+      unifex_free(payload);
+    }
+  }
+  unifex_free(frames);
+}
+
+UNIFEX_TERM encode(
+    UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, int force_keyframe, State *state
+) {
   vpx_codec_iter_t iter = NULL;
   int flushing = (img == NULL), got_packets = 0;
   const vpx_codec_cx_pkt_t *packet = NULL;
 
   unsigned int frames_cnt = 0, allocated_frames = 1;
-  UnifexPayload **encoded_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload*));
-  vpx_codec_pts_t *encoded_frames_timestamps =
-      unifex_alloc(allocated_frames * sizeof(vpx_codec_pts_t));
+  encoded_frame *encoded_frames = unifex_alloc(allocated_frames * sizeof(encoded_frame));
 
   do {
-    // Reasoning for the do-while and while loops comes from the description of vpx_codec_encode:
+    // Reasoning for the do-while and while loops comes from the description of
+    // vpx_codec_encode:
     //
-    // When the last frame has been passed to the encoder, this function should continue to be
-    // called, with the img parameter set to NULL. This will signal the end-of-stream condition to
-    // the encoder and allow it to encode any held buffers. Encoding is complete when
-    // vpx_codec_encode() is called and vpx_codec_get_cx_data() returns no data.
-    if (vpx_codec_encode(&state->codec_context, img, pts, 1, 0, state->encoding_deadline) !=
+    // When the last frame has been passed to the encoder, this function should
+    // continue to be called, with the img parameter set to NULL. This will
+    // signal the end-of-stream condition to the encoder and allow it to encode
+    // any held buffers. Encoding is complete when vpx_codec_encode() is called
+    // and vpx_codec_get_cx_data() returns no data.
+    vpx_enc_frame_flags_t flags = force_keyframe ? VPX_EFLAG_FORCE_KF : 0;
+    if (vpx_codec_encode(&state->codec_context, img, pts, 1, flags, state->encoding_deadline) !=
         VPX_CODEC_OK) {
       if (flushing) {
         return result_error(
@@ -113,6 +130,7 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
         );
       }
     }
+    force_keyframe = 0;
     got_packets = 0;
 
     while ((packet = vpx_codec_get_cx_data(&state->codec_context, &iter)) != NULL) {
@@ -121,38 +139,34 @@ UNIFEX_TERM encode(UnifexEnv *env, vpx_image_t *img, vpx_codec_pts_t pts, State 
 
       if (frames_cnt >= allocated_frames) {
         allocated_frames *= 2;
-        encoded_frames = unifex_realloc(encoded_frames, allocated_frames * sizeof(*encoded_frames));
-
-        encoded_frames_timestamps = unifex_realloc(
-            encoded_frames_timestamps, allocated_frames * sizeof(*encoded_frames_timestamps)
-        );
+        encoded_frames = unifex_realloc(encoded_frames, allocated_frames * sizeof(encoded_frame));
       }
       alloc_output_frame(env, packet, &encoded_frames[frames_cnt]);
-      memcpy(encoded_frames[frames_cnt]->data, packet->data.frame.buf, packet->data.frame.sz);
-      encoded_frames_timestamps[frames_cnt] = packet->data.frame.pts;
+      memcpy(
+          encoded_frames[frames_cnt].payload->data, packet->data.frame.buf, packet->data.frame.sz
+      );
+      encoded_frames[frames_cnt].pts = packet->data.frame.pts;
+      encoded_frames[frames_cnt].is_keyframe = ((packet->data.frame.flags & VPX_FRAME_IS_KEY) != 0);
       frames_cnt++;
     }
   } while (got_packets && flushing);
 
   UNIFEX_TERM result;
   if (flushing) {
-    result =
-        flush_result_ok(env, encoded_frames, frames_cnt, encoded_frames_timestamps, frames_cnt);
+    result = flush_result_ok(env, encoded_frames, frames_cnt);
   } else {
-    result = encode_frame_result_ok(
-        env, encoded_frames, frames_cnt, encoded_frames_timestamps, frames_cnt
-    );
+    result = encode_frame_result_ok(env, encoded_frames, frames_cnt);
   }
-  free_payloads(encoded_frames, frames_cnt);
+  free_frames(encoded_frames, frames_cnt);
 
   return result;
 }
 
 UNIFEX_TERM encode_frame(
-    UnifexEnv *env, UnifexPayload *raw_frame, vpx_codec_pts_t pts, State *state
+    UnifexEnv *env, UnifexPayload *raw_frame, vpx_codec_pts_t pts, int force_keyframe, State *state
 ) {
   get_image_from_raw_frame(&state->img, raw_frame);
-  return encode(env, &state->img, pts, state);
+  return encode(env, &state->img, pts, force_keyframe, state);
 }
 
-UNIFEX_TERM flush(UnifexEnv *env, State *state) { return encode(env, NULL, 0, state); }
+UNIFEX_TERM flush(UnifexEnv *env, State *state) { return encode(env, NULL, 0, 0, state); }

@@ -52,6 +52,16 @@ void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img, UnifexPayload **
   unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, get_image_byte_size(img), *output_frame);
 }
 
+void free_payloads(UnifexPayload **payloads, unsigned int payloads_cnt) {
+  for (unsigned int i = 0; i < payloads_cnt; i++) {
+    if (payloads[i] != NULL) {
+      unifex_payload_release(payloads[i]);
+      unifex_free(payloads[i]);
+    }
+  }
+  unifex_free(payloads);
+}
+
 PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
   switch (img->fmt) {
   case VPX_IMG_FMT_I422:
@@ -74,7 +84,7 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   vpx_image_t *img = NULL;
   PixelFormat pixel_format = PIXEL_FORMAT_I420;
   unsigned int frames_cnt = 0, allocated_frames = 1;
-  UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload*));
+  UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload *));
 
   if (vpx_codec_decode(&state->codec_context, frame->data, frame->size, NULL, 0)) {
     return result_error(
