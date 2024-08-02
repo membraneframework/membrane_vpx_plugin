@@ -6,6 +6,7 @@ defmodule Membrane.VPx.Encoder do
   alias Membrane.VPx.Encoder.Native
 
   @default_encoding_deadline Membrane.Time.milliseconds(10)
+  @bitrate_calculation_coefficient 0.14
 
   defmodule State do
     @moduledoc false
@@ -14,11 +15,12 @@ defmodule Membrane.VPx.Encoder do
             codec: :vp8 | :vp9,
             codec_module: VP8 | VP9,
             encoding_deadline: non_neg_integer(),
+            rc_target_bitrate: pos_integer(),
             encoder_ref: reference() | nil,
             force_next_keyframe: boolean()
           }
 
-    @enforce_keys [:codec, :codec_module, :encoding_deadline]
+    @enforce_keys [:codec, :codec_module, :encoding_deadline, :rc_target_bitrate]
     defstruct @enforce_keys ++
                 [
                   encoder_ref: nil,
@@ -27,6 +29,14 @@ defmodule Membrane.VPx.Encoder do
   end
 
   @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
+
+  @type encoder_options :: %{
+          width: pos_integer(),
+          height: pos_integer(),
+          pixel_format: Membrane.RawVideo.pixel_format(),
+          encoding_deadline: non_neg_integer(),
+          rc_target_bitrate: pos_integer()
+        }
 
   @type encoded_frame :: %{payload: binary(), pts: non_neg_integer(), is_keyframe: boolean()}
 
@@ -41,7 +51,8 @@ defmodule Membrane.VPx.Encoder do
           :vp8 -> VP8
           :vp9 -> VP9
         end,
-      encoding_deadline: opts.encoding_deadline
+      encoding_deadline: opts.encoding_deadline,
+      rc_target_bitrate: opts.rc_target_bitrate
     }
 
     {[], state}
@@ -117,8 +128,17 @@ defmodule Membrane.VPx.Encoder do
         {fixed_deadline, _framerate} -> fixed_deadline |> Membrane.Time.as_microseconds(:round)
       end
 
-    new_encoder_ref =
-      Native.create!(state.codec, width, height, pixel_format, encoding_deadline)
+    rc_target_bitrate = get_target_bitrate(state.rc_target_bitrate, width, height, framerate)
+
+    encoder_options = %{
+      width: width,
+      height: height,
+      pixel_format: pixel_format,
+      encoding_deadline: encoding_deadline,
+      rc_target_bitrate: rc_target_bitrate
+    }
+
+    new_encoder_ref = Native.create!(state.codec, encoder_options)
 
     case state.encoder_ref do
       nil ->
@@ -129,6 +149,26 @@ defmodule Membrane.VPx.Encoder do
     end
   end
 
+  @spec get_target_bitrate(
+          pos_integer() | :auto,
+          pos_integer(),
+          pos_integer(),
+          {non_neg_integer(), pos_integer()} | nil
+        ) :: pos_integer()
+  defp get_target_bitrate(:auto, width, height, framerate) do
+    assumed_fps =
+      case framerate do
+        nil -> 30.0
+        {framerate_num, framerate_denom} -> framerate_num / framerate_denom
+      end
+
+    (@bitrate_calculation_coefficient * width * height * assumed_fps) |> trunc() |> div(1000)
+  end
+
+  defp get_target_bitrate(provided_bitrate, _width, _height, _framerate) do
+    provided_bitrate
+  end
+
   @spec flush(reference(), :vp8 | :vp9) :: [Membrane.Buffer.t()]
   defp flush(encoder_ref, codec) do
     {:ok, encoded_frames} = Native.flush(encoder_ref)
@@ -137,7 +177,7 @@ defmodule Membrane.VPx.Encoder do
   end
 
   @spec get_buffers_from_frames([encoded_frame()], :vp8 | :vp9) :: [Buffer.t()]
-  def get_buffers_from_frames(encoded_frames, codec) do
+  defp get_buffers_from_frames(encoded_frames, codec) do
     Enum.map(encoded_frames, fn %{payload: payload, pts: pts, is_keyframe: is_keyframe} ->
       %Buffer{
         payload: payload,
