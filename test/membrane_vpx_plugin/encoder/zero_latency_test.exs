@@ -29,6 +29,11 @@ defmodule Membrane.VPx.ZeroLatencyTest do
     def handle_end_of_stream(:input, _ctx, state) do
       {[notify_parent: {:processed_buffers, state.processed_buffers}], state}
     end
+
+    @impl true
+    def handle_parent_notification(:send_eos, _ctx, state) do
+      {[end_of_stream: :output], state}
+    end
   end
 
   describe "Encoder doesn't buffer any frames for" do
@@ -69,6 +74,12 @@ defmodule Membrane.VPx.ZeroLatencyTest do
     assert_pipeline_notified(pid, :eos_suppressor, {:processed_buffers, processed_buffers})
 
     Enum.each(1..processed_buffers, fn _n -> assert_sink_buffer(pid, :sink, _buf) end)
+
+    Membrane.Testing.Pipeline.notify_child(pid, :eos_suppressor, :send_eos)
+
+    assert_end_of_stream(pid, :encoder)
+
+    refute_sink_buffer(pid, :sink, _buf, 1000)
 
     Membrane.Testing.Pipeline.terminate(pid)
   end
