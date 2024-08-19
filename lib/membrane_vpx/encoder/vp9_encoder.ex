@@ -36,6 +36,20 @@ defmodule Membrane.VP9.Encoder do
                 of the incoming stream. Some reference recommended bitrates can be also found
                 [here](https://support.google.com/youtube/answer/1722171#zippy=%2Cbitrate)
                 """
+              ],
+              g_lag_in_frames: [
+                spec: non_neg_integer(),
+                default: 5,
+                description: """
+                The number of input frames the encoder is allowed to consume
+                before producing output frames. This allows the encoder to
+                base decisions for the current frame on future frames. This does
+                increase the latency of the encoding pipeline, so it is not appropriate
+                in all situations (ex: realtime encoding).
+
+                Note that this is a maximum value -- the encoder may produce frames
+                sooner than the given limit. If set to 0 this feature will be disabled.
+                """
               ]
 
   def_input_pad :input,

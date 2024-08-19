@@ -1,7 +1,6 @@
 #include "vpx_encoder.h"
 #include "membrane_vpx_plugin/_generated/nif/vpx_encoder.h"
 #include "unifex/payload.h"
-#include <stdio.h>
 
 // The following code is based on the simple_encoder example provided by libvpx
 // (https://github.com/webmproject/libvpx/blob/main/examples/simple_encoder.c)
@@ -29,7 +28,20 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
   }
 }
 
-UNIFEX_TERM create(UnifexEnv *env, Codec codec, encoder_options opts) {
+void apply_user_encoder_config(vpx_codec_enc_cfg_t *config, user_encoder_config *user_config) {
+  config->g_lag_in_frames = user_config->g_lag_in_frames;
+  config->rc_target_bitrate = user_config->rc_target_bitrate;
+}
+
+UNIFEX_TERM create(
+    UnifexEnv *env,
+    Codec codec,
+    unsigned int width,
+    unsigned int height,
+    PixelFormat pixel_format,
+    unsigned int encoding_deadline,
+    user_encoder_config user_config
+) {
   UNIFEX_TERM result;
   State *state = unifex_alloc_state(env);
   vpx_codec_enc_cfg_t config;
@@ -42,7 +54,7 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, encoder_options opts) {
     state->codec_interface = vpx_codec_vp9_cx();
     break;
   }
-  state->encoding_deadline = opts.encoding_deadline;
+  state->encoding_deadline = encoding_deadline;
 
   if (vpx_codec_enc_config_default(state->codec_interface, &config, 0)) {
     return result_error(
@@ -50,19 +62,17 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec, encoder_options opts) {
     );
   }
 
-  config.g_h = opts.height;
-  config.g_w = opts.width;
-  config.rc_target_bitrate = opts.rc_target_bitrate;
+  config.g_h = height;
+  config.g_w = width;
   config.g_timebase.num = 1;
   config.g_timebase.den = 1000000000; // 1e9
   config.g_error_resilient = 1;
+  apply_user_encoder_config(&config, &user_config);
 
   if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config, 0)) {
     return result_error(env, "Failed to initialize encoder", create_result_error, NULL, state);
   }
-  if (!vpx_img_alloc(
-          &state->img, translate_pixel_format(opts.pixel_format), opts.width, opts.height, 1
-      )) {
+  if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width, height, 1)) {
     return result_error(
         env, "Failed to allocate image", create_result_error, &state->codec_context, state
     );
