@@ -17,6 +17,10 @@ defmodule Membrane.VPx.Encoder do
           rc_target_bitrate: pos_integer()
         }
 
+  @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
+
+  @type encoded_frame :: %{payload: binary(), pts: non_neg_integer(), is_keyframe: boolean()}
+
   defmodule State do
     @moduledoc false
 
@@ -37,13 +41,8 @@ defmodule Membrane.VPx.Encoder do
                 ]
   end
 
-  @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
-
-  @type encoded_frame :: %{payload: binary(), pts: non_neg_integer(), is_keyframe: boolean()}
-
   @spec handle_init(CallbackContext.t(), VP8.Encoder.t() | VP9.Encoder.t(), :vp8 | :vp9) ::
           callback_return()
-
   def handle_init(_ctx, opts, codec) do
     state = %State{
       codec: codec,

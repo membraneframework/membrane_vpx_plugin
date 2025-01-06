@@ -6,21 +6,7 @@ defmodule Membrane.VP9.Decoder do
 
   alias Membrane.{VP9, VPx}
 
-  def_options width: [
-                spec: pos_integer() | nil,
-                default: nil,
-                description: """
-                Width of a frame, needed if not provided with stream format. If it's not specified either in this option or the stream format, the element will crash.
-                """
-              ],
-              height: [
-                spec: pos_integer() | nil,
-                default: nil,
-                description: """
-                Height of a frame, needed if not provided with stream format. If it's not specified either in this option or the stream format, the element will crash.
-                """
-              ],
-              framerate: [
+  def_options framerate: [
                 spec: {non_neg_integer(), pos_integer()} | nil,
                 default: nil,
                 description: """
