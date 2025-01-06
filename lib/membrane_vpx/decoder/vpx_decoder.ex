@@ -13,8 +13,6 @@ defmodule Membrane.VPx.Decoder do
           height: non_neg_integer()
         }
 
-  @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
-
   defmodule State do
     @moduledoc false
 
@@ -32,6 +30,8 @@ defmodule Membrane.VPx.Decoder do
                   decoder_ref: nil
                 ]
   end
+
+  @type callback_return :: {[Membrane.Element.Action.t()], State.t()}
 
   @spec handle_init(CallbackContext.t(), VP8.Decoder.t() | VP9.Decoder.t(), :vp8 | :vp9) ::
           callback_return()
