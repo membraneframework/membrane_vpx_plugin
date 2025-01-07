@@ -2,7 +2,7 @@ defmodule Membrane.VPx.Decoder do
   @moduledoc false
 
   require Membrane.Logger
-  alias Membrane.{Buffer, RawVideo, RemoteStream, VP8, VP9}
+  alias Membrane.{Buffer, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Decoder.Native
 
@@ -61,50 +61,22 @@ defmodule Membrane.VPx.Decoder do
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, ctx, state) do
     {:ok, [decoded_frame]} = Native.decode_frame(payload, state.decoder_ref)
 
-    stream_format_action =
-      if ctx.pads.output.stream_format == nil do
-        output_stream_format =
-          get_output_stream_format(ctx.pads.input.stream_format, decoded_frame, state)
-
-        [stream_format: {:output, output_stream_format}]
-      else
-        []
-      end
-
-    {stream_format_action ++
-       [buffer: {:output, %Buffer{payload: decoded_frame.payload, pts: pts}}], state}
-  end
-
-  @spec get_output_stream_format(
-          RemoteStream.t() | VP8.t() | VP9.t(),
-          decoded_frame(),
-          State.t()
-        ) :: RawVideo.t()
-  defp get_output_stream_format(input_stream_format, decoded_frame, state) do
-    case input_stream_format do
-      %RemoteStream{} ->
-        :ok
-
-      %{width: width, height: height} ->
-        if width != decoded_frame.width do
-          Membrane.Logger.warning(
-            "Image width specified in stream format: #{inspect(width)} differs from the real image width: #{inspect(decoded_frame.width)}, using the actual value."
-          )
-        end
-
-        if height != decoded_frame.height do
-          Membrane.Logger.warning(
-            "Image height specified in stream format: #{inspect(height)} differs from the real image height: #{inspect(decoded_frame.height)}, using the actual value."
-          )
-        end
-    end
-
-    %RawVideo{
+    new_stream_format = %RawVideo{
       width: decoded_frame.width,
       height: decoded_frame.height,
       framerate: state.framerate,
       pixel_format: decoded_frame.pixel_format,
       aligned: true
     }
+
+    stream_format_action =
+      if new_stream_format != ctx.pads.output.stream_format do
+        [stream_format: {:output, new_stream_format}]
+      else
+        []
+      end
+
+    {stream_format_action ++
+       [buffer: {:output, %Buffer{payload: decoded_frame.payload, pts: pts}}], state}
   end
 end
