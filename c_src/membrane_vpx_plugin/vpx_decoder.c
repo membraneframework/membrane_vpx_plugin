@@ -1,7 +1,4 @@
 #include "vpx_decoder.h"
-#include "membrane_vpx_plugin/_generated/nif/vpx_decoder.h"
-#include "unifex/payload.h"
-#include "unifex/unifex.h"
 
 // The following code is based on the simple_decoder example provided by libvpx
 // (https://github.com/webmproject/libvpx/blob/main/examples/simple_decoder.c)
