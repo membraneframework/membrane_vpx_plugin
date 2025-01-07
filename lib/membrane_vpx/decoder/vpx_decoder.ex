@@ -2,6 +2,7 @@ defmodule Membrane.VPx.Decoder do
   @moduledoc false
 
   require Membrane.Logger
+  alias Hex.State
   alias Membrane.{Buffer, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Decoder.Native
@@ -18,13 +19,11 @@ defmodule Membrane.VPx.Decoder do
 
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
-            width: pos_integer() | nil,
-            height: pos_integer() | nil,
             framerate: {pos_integer(), pos_integer()} | nil,
             decoder_ref: reference() | nil
           }
 
-    @enforce_keys [:codec, :width, :height, :framerate]
+    @enforce_keys [:codec, :framerate]
     defstruct @enforce_keys ++
                 [
                   decoder_ref: nil
@@ -36,12 +35,7 @@ defmodule Membrane.VPx.Decoder do
   @spec handle_init(CallbackContext.t(), VP8.Decoder.t() | VP9.Decoder.t(), :vp8 | :vp9) ::
           callback_return()
   def handle_init(_ctx, opts, codec) do
-    state_fields =
-      opts
-      |> Map.take([:width, :height, :framerate])
-      |> Map.put(:codec, codec)
-
-    {[], struct(State, state_fields)}
+    {[], %State{framerate: opts.framerate, codec: codec}}
   end
 
   @spec handle_setup(CallbackContext.t(), State.t()) :: callback_return()
