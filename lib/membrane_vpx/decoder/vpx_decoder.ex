@@ -1,6 +1,7 @@
 defmodule Membrane.VPx.Decoder do
   @moduledoc false
 
+  require Membrane.Logger
   alias Membrane.{Buffer, RawVideo, RemoteStream, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Decoder.Native
@@ -10,13 +11,11 @@ defmodule Membrane.VPx.Decoder do
 
     @type t :: %__MODULE__{
             codec: :vp8 | :vp9,
-            width: pos_integer() | nil,
-            height: pos_integer() | nil,
             framerate: {pos_integer(), pos_integer()} | nil,
             decoder_ref: reference() | nil
           }
 
-    @enforce_keys [:codec, :width, :height, :framerate]
+    @enforce_keys [:codec, :framerate]
     defstruct @enforce_keys ++
                 [
                   decoder_ref: nil
@@ -28,12 +27,7 @@ defmodule Membrane.VPx.Decoder do
   @spec handle_init(CallbackContext.t(), VP8.Decoder.t() | VP9.Decoder.t(), :vp8 | :vp9) ::
           callback_return()
   def handle_init(_ctx, opts, codec) do
-    state_fields =
-      opts
-      |> Map.take([:width, :height, :framerate])
-      |> Map.put(:codec, codec)
-
-    {[], struct(State, state_fields)}
+    {[], %State{framerate: opts.framerate, codec: codec}}
   end
 
   @spec handle_setup(CallbackContext.t(), State.t()) :: callback_return()
@@ -51,51 +45,50 @@ defmodule Membrane.VPx.Decoder do
   @spec handle_buffer(:input, Membrane.Buffer.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_buffer(:input, %Buffer{payload: payload, pts: pts}, ctx, state) do
-    {:ok, [decoded_frame], pixel_format} = Native.decode_frame(payload, state.decoder_ref)
+    {:ok, [decoded_frame]} = Native.decode_frame(payload, state.decoder_ref)
+
+    new_stream_format = %RawVideo{
+      width: decoded_frame.width,
+      height: decoded_frame.height,
+      framerate: state.framerate,
+      pixel_format: decoded_frame.pixel_format,
+      aligned: true
+    }
 
     stream_format_action =
-      if ctx.pads.output.stream_format == nil do
-        output_stream_format =
-          get_output_stream_format(ctx.pads.input.stream_format, pixel_format, state)
+      if new_stream_format != ctx.pads.output.stream_format do
+        validate_stream_formats(ctx.pads.input.stream_format, new_stream_format)
 
-        [stream_format: {:output, output_stream_format}]
+        [stream_format: {:output, new_stream_format}]
       else
         []
       end
 
-    {stream_format_action ++ [buffer: {:output, %Buffer{payload: decoded_frame, pts: pts}}],
-     state}
+    {stream_format_action ++
+       [buffer: {:output, %Buffer{payload: decoded_frame.payload, pts: pts}}], state}
   end
 
-  @spec get_output_stream_format(
-          RemoteStream.t() | VP8.t() | VP9.t(),
-          RawVideo.pixel_format(),
-          State.t()
-        ) :: RawVideo.t()
-  defp get_output_stream_format(input_stream_format, pixel_format, state) do
-    {width, height, framerate} =
-      case input_stream_format do
-        %RemoteStream{} ->
-          {
-            state.width || raise("Width not provided"),
-            state.height || raise("Height not provided"),
-            state.framerate
-          }
+  @spec validate_stream_formats(RemoteStream.t() | VP8.t() | VP9.t(), RawVideo.t()) ::
+          :ok
+  defp validate_stream_formats(input_stream_format, output_stream_format) do
+    case input_stream_format do
+      %RemoteStream{} ->
+        :ok
 
-        %{width: width, height: height} ->
-          {
-            width,
-            height,
-            state.framerate
-          }
-      end
+      %{width: width, height: height} ->
+        if width != output_stream_format.width do
+          Membrane.Logger.warning(
+            "Image width specified in stream format: #{inspect(width)} differs from the real image width: #{inspect(output_stream_format.width)}, using the actual value."
+          )
+        end
 
-    %RawVideo{
-      width: width,
-      height: height,
-      framerate: framerate,
-      pixel_format: pixel_format,
-      aligned: true
-    }
+        if height != output_stream_format.height do
+          Membrane.Logger.warning(
+            "Image height specified in stream format: #{inspect(height)} differs from the real image height: #{inspect(output_stream_format.height)}, using the actual value."
+          )
+        end
+
+        :ok
+    end
   end
 end

@@ -47,19 +47,19 @@ void get_raw_frame_from_image(vpx_image_t *img, UnifexPayload *raw_frame) {
   convert_between_image_and_raw_frame(img, raw_frame, IMAGE_TO_RAW_FRAME);
 }
 
-void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img, UnifexPayload **output_frame) {
-  *output_frame = unifex_alloc(sizeof(UnifexPayload));
-  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, get_image_byte_size(img), *output_frame);
+void alloc_output_frame(UnifexEnv *env, const vpx_image_t *img, decoded_frame *output_frame) {
+  output_frame->payload = unifex_alloc(sizeof(UnifexPayload));
+  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, get_image_byte_size(img), output_frame->payload);
 }
 
-void free_payloads(UnifexPayload **payloads, unsigned int payloads_cnt) {
+void free_frames(decoded_frame *output_frames, unsigned int payloads_cnt) {
   for (unsigned int i = 0; i < payloads_cnt; i++) {
-    if (payloads[i] != NULL) {
-      unifex_payload_release(payloads[i]);
-      unifex_free(payloads[i]);
+    if (output_frames[i].payload != NULL) {
+      unifex_payload_release(output_frames[i].payload);
+      unifex_free(output_frames[i].payload);
     }
   }
-  unifex_free(payloads);
+  unifex_free(output_frames);
 }
 
 PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
@@ -82,9 +82,8 @@ PixelFormat get_pixel_format_from_image(vpx_image_t *img) {
 UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   vpx_codec_iter_t iter = NULL;
   vpx_image_t *img = NULL;
-  PixelFormat pixel_format = PIXEL_FORMAT_I420;
   unsigned int frames_cnt = 0, allocated_frames = 1;
-  UnifexPayload **output_frames = unifex_alloc(allocated_frames * sizeof(UnifexPayload *));
+  decoded_frame *output_frames = unifex_alloc(allocated_frames * sizeof(decoded_frame));
 
   if (vpx_codec_decode(&state->codec_context, frame->data, frame->size, NULL, 0)) {
     return result_error(
@@ -95,18 +94,21 @@ UNIFEX_TERM decode_frame(UnifexEnv *env, UnifexPayload *frame, State *state) {
   while ((img = vpx_codec_get_frame(&state->codec_context, &iter)) != NULL) {
     if (frames_cnt >= allocated_frames) {
       allocated_frames *= 2;
-      output_frames = unifex_realloc(output_frames, allocated_frames * sizeof(*output_frames));
+      output_frames = unifex_realloc(output_frames, allocated_frames * sizeof(decoded_frame));
     }
 
     alloc_output_frame(env, img, &output_frames[frames_cnt]);
-    get_raw_frame_from_image(img, output_frames[frames_cnt]);
-    pixel_format = get_pixel_format_from_image(img);
+
+    get_raw_frame_from_image(img, output_frames[frames_cnt].payload);
+    output_frames[frames_cnt].pixel_format = get_pixel_format_from_image(img);
+    output_frames[frames_cnt].width = img->d_w;
+    output_frames[frames_cnt].height = img->d_h;
     frames_cnt++;
   }
 
-  UNIFEX_TERM result = decode_frame_result_ok(env, output_frames, frames_cnt, pixel_format);
+  UNIFEX_TERM result = decode_frame_result_ok(env, output_frames, frames_cnt);
 
-  free_payloads(output_frames, frames_cnt);
+  free_frames(output_frames, frames_cnt);
 
   return result;
 }
