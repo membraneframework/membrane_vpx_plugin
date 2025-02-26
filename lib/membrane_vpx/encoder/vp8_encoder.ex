@@ -53,7 +53,7 @@ defmodule Membrane.VP8.Encoder do
               ],
               cpu_used: [
                 spec: non_neg_integer(),
-                default: 0,
+                default: 15,
                 description: """
                 A parameter used to balance between compression and performance.
 
