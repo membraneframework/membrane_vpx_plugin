@@ -53,18 +53,20 @@ defmodule Membrane.VP8.Encoder do
               ],
               cpu_used: [
                 spec: non_neg_integer(),
-                default: 15,
+                default: 8,
                 description: """
                 A parameter used to balance between compression and performance.
 
-                Setting a lower value increases the encoding time but improves the quality and compression efficiency of the
-                output video. Setting a higher value speeds up the encoding at the cost of lower quality and large file sizes.
+                Setting a lower value increases the encoding time but improves
+                the quality and compression efficiency of the output video.
+                Setting a higher value speeds up the encoding at the cost of lower
+                quality and large file sizes.
                 The parameter needs to be in range 0-15.
                 """
               ],
               g_threads: [
                 spec: pos_integer(),
-                default: 1,
+                default: 8,
                 description: """
                 Specifies how many OS threads can be used by the encoder.
                 """
