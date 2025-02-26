@@ -50,6 +50,24 @@ defmodule Membrane.VP8.Encoder do
                 Note that this is a maximum value -- the encoder may produce frames
                 sooner than the given limit. If set to 0 this feature will be disabled.
                 """
+              ],
+              cpu_used: [
+                spec: non_neg_integer(),
+                default: 0,
+                description: """
+                A parameter used to balance between compression and performance.
+
+                Setting a lower value increases the encoding time but improves the quality and compression efficiency of the
+                output video. Setting a higher value speeds up the encoding at the cost of lower quality and large file sizes.
+                The parameter needs to be in range 0-15.
+                """
+              ],
+              g_threads: [
+                spec: pos_integer(),
+                default: 1,
+                description: """
+                Specifies how many OS threads can be used by the encoder.
+                """
               ]
 
   def_input_pad :input,
