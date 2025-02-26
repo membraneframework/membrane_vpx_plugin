@@ -64,7 +64,7 @@ defmodule Membrane.VP9.Encoder do
               ],
               g_threads: [
                 spec: pos_integer(),
-                default: 0,
+                default: 8,
                 description: """
                 Specifies how many OS threads can be used by the encoder.
                 """
