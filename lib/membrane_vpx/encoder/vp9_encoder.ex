@@ -52,7 +52,7 @@ defmodule Membrane.VP9.Encoder do
                 """
               ],
               cpu_used: [
-                spec: non_neg_integer(),
+                spec: non_neg_integer() | nil,
                 default: nil,
                 description: """
                 A parameter used to balance between compression and performance.
@@ -66,7 +66,7 @@ defmodule Membrane.VP9.Encoder do
                 """
               ],
               g_threads: [
-                spec: pos_integer(),
+                spec: pos_integer() | nil,
                 default: nil,
                 description: """
                 Specifies how many OS threads can be used by the encoder.
