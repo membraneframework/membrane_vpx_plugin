@@ -15,7 +15,7 @@ type encoded_frame :: %EncodedFrame{
 type user_encoder_config :: %UserEncoderConfig{
        g_lag_in_frames: unsigned,
        rc_target_bitrate: unsigned,
-       g_threads: unsigned
+       g_threads: int
      }
 
 spec create(
@@ -24,7 +24,7 @@ spec create(
        height :: unsigned,
        pixel_format,
        encoding_deadline :: unsigned,
-       cpu_used :: unsigned,
+       cpu_used :: int,
        user_encoder_config
      ) :: {:ok :: label, state} | {:error :: label, reason :: atom}
 

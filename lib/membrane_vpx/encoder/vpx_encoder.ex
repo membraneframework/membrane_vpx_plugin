@@ -11,12 +11,12 @@ defmodule Membrane.VPx.Encoder do
   @type unprocessed_user_encoder_config :: %{
           g_lag_in_frames: non_neg_integer(),
           rc_target_bitrate: pos_integer() | :auto,
-          g_threads: pos_integer()
+          g_threads: pos_integer() | nil
         }
   @type user_encoder_config :: %{
           g_lag_in_frames: non_neg_integer(),
           rc_target_bitrate: pos_integer(),
-          g_threads: pos_integer()
+          g_threads: integer()
         }
 
   @type encoded_frame :: %{payload: binary(), pts: non_neg_integer(), is_keyframe: boolean()}
@@ -31,7 +31,7 @@ defmodule Membrane.VPx.Encoder do
             user_encoder_config: Membrane.VPx.Encoder.unprocessed_user_encoder_config(),
             encoder_ref: reference() | nil,
             force_next_keyframe: boolean(),
-            cpu_used: non_neg_integer()
+            cpu_used: integer()
           }
 
     @enforce_keys [:codec, :codec_module, :encoding_deadline, :user_encoder_config, :cpu_used]
@@ -58,9 +58,9 @@ defmodule Membrane.VPx.Encoder do
       user_encoder_config: %{
         g_lag_in_frames: opts.g_lag_in_frames,
         rc_target_bitrate: opts.rc_target_bitrate,
-        g_threads: opts.g_threads
+        g_threads: opts.g_threads || -1
       },
-      cpu_used: opts.cpu_used
+      cpu_used: opts.cpu_used || -1
     }
 
     {[], state}

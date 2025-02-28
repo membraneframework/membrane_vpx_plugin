@@ -53,7 +53,7 @@ defmodule Membrane.VP9.Encoder do
               ],
               cpu_used: [
                 spec: non_neg_integer(),
-                default: 15,
+                default: nil,
                 description: """
                 A parameter used to balance between compression and performance.
 
@@ -61,14 +61,16 @@ defmodule Membrane.VP9.Encoder do
                 the quality and compression efficiency of the output video.
                 Setting a higher value speeds up the encoding at the cost of lower
                 quality and large file sizes.
-                The parameter needs to be in range 0-15.
+                The parameter needs to either be nil or be in range 0-15.
+                If it's nil, the default libvpx value is applied.
                 """
               ],
               g_threads: [
                 spec: pos_integer(),
-                default: 4,
+                default: nil,
                 description: """
                 Specifies how many OS threads can be used by the encoder.
+                If it's nil, the default libvpx value is applied.
                 """
               ]
 
