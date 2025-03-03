@@ -10,11 +10,13 @@ defmodule Membrane.VPx.Encoder do
 
   @type unprocessed_user_encoder_config :: %{
           g_lag_in_frames: non_neg_integer(),
-          rc_target_bitrate: pos_integer() | :auto
+          rc_target_bitrate: pos_integer() | :auto,
+          g_threads: pos_integer() | nil
         }
   @type user_encoder_config :: %{
           g_lag_in_frames: non_neg_integer(),
-          rc_target_bitrate: pos_integer()
+          rc_target_bitrate: pos_integer(),
+          g_threads: integer()
         }
 
   @type encoded_frame :: %{payload: binary(), pts: non_neg_integer(), is_keyframe: boolean()}
@@ -28,10 +30,11 @@ defmodule Membrane.VPx.Encoder do
             encoding_deadline: non_neg_integer() | :auto,
             user_encoder_config: Membrane.VPx.Encoder.unprocessed_user_encoder_config(),
             encoder_ref: reference() | nil,
-            force_next_keyframe: boolean()
+            force_next_keyframe: boolean(),
+            cpu_used: integer()
           }
 
-    @enforce_keys [:codec, :codec_module, :encoding_deadline, :user_encoder_config]
+    @enforce_keys [:codec, :codec_module, :encoding_deadline, :user_encoder_config, :cpu_used]
     defstruct @enforce_keys ++
                 [
                   encoder_ref: nil,
@@ -54,8 +57,10 @@ defmodule Membrane.VPx.Encoder do
       encoding_deadline: opts.encoding_deadline,
       user_encoder_config: %{
         g_lag_in_frames: opts.g_lag_in_frames,
-        rc_target_bitrate: opts.rc_target_bitrate
-      }
+        rc_target_bitrate: opts.rc_target_bitrate,
+        g_threads: opts.g_threads || -1
+      },
+      cpu_used: opts.cpu_used || -1
     }
 
     {[], state}
@@ -141,6 +146,7 @@ defmodule Membrane.VPx.Encoder do
         height,
         pixel_format,
         encoding_deadline,
+        state.cpu_used,
         user_encoder_config
       )
 
@@ -165,7 +171,8 @@ defmodule Membrane.VPx.Encoder do
 
     %{
       g_lag_in_frames: user_encoder_config.g_lag_in_frames,
-      rc_target_bitrate: rc_target_bitrate
+      rc_target_bitrate: rc_target_bitrate,
+      g_threads: user_encoder_config.g_threads
     }
   end
 

@@ -15,7 +15,7 @@ The package can be installed by adding `membrane_vpx_plugin` to your list of dep
 ```elixir
 def deps do
   [
-    {:membrane_vpx_plugin, "~> 0.3.0"}
+    {:membrane_vpx_plugin, "~> 0.4.0"}
   ]
 end
 ```

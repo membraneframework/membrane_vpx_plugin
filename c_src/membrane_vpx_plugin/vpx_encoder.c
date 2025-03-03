@@ -31,6 +31,7 @@ vpx_img_fmt_t translate_pixel_format(PixelFormat pixel_format) {
 void apply_user_encoder_config(vpx_codec_enc_cfg_t *config, user_encoder_config *user_config) {
   config->g_lag_in_frames = user_config->g_lag_in_frames;
   config->rc_target_bitrate = user_config->rc_target_bitrate;
+  if(user_config->g_threads != -1) config->g_threads = user_config->g_threads;
 }
 
 UNIFEX_TERM create(
@@ -40,6 +41,7 @@ UNIFEX_TERM create(
     unsigned int height,
     PixelFormat pixel_format,
     unsigned int encoding_deadline,
+    int cpu_used,
     user_encoder_config user_config
 ) {
   UNIFEX_TERM result;
@@ -72,6 +74,15 @@ UNIFEX_TERM create(
   if (vpx_codec_enc_init(&state->codec_context, state->codec_interface, &config, 0)) {
     return result_error(env, "Failed to initialize encoder", create_result_error, NULL, state);
   }
+
+  if(cpu_used != -1) {
+    vpx_codec_err_t res = vpx_codec_control(&state->codec_context, VP8E_SET_CPUUSED, cpu_used); // VP8E_SET_CPUUSED is valid for both VP8 and VP9 codecs ¯\_(ツ)_/¯
+
+    if(res != VPX_CODEC_OK){
+      return result_error(env, "Failed to set codec control cpu-used parameter", create_result_error, NULL, state);
+    }
+  }
+
   if (!vpx_img_alloc(&state->img, translate_pixel_format(pixel_format), width, height, 1)) {
     return result_error(
         env, "Failed to allocate image", create_result_error, &state->codec_context, state
