@@ -66,7 +66,7 @@ defmodule Membrane.VPx.KeyframesTest do
             pixel_format: :I420,
             width: 1080,
             height: 720,
-            framerate: {5, 1}
+            framerate: {2, 1}
           })
           |> child(:realtimer, Membrane.Realtimer)
           |> child(:encoder, encoder_struct)
