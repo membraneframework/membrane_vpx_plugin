@@ -66,7 +66,7 @@ defmodule Membrane.VPx.KeyframesTest do
             pixel_format: :I420,
             width: 1080,
             height: 720,
-            framerate: {5, 1}
+            framerate: {2, 1}
           })
           |> child(:realtimer, Membrane.Realtimer)
           |> child(:encoder, encoder_struct)
@@ -74,13 +74,13 @@ defmodule Membrane.VPx.KeyframesTest do
           |> child(:sink, Membrane.Testing.Sink)
       )
 
-    Enum.each(1..5, fn _n ->
+    assert_end_of_stream(pid, :sink, :input, 20_000)
+
+    Enum.each(1..6, fn _n ->
       assert_sink_buffer(pid, :sink, %Membrane.Buffer{
         metadata: %{^metadata_key => %{is_keyframe: true}}
       })
     end)
-
-    assert_end_of_stream(pid, :sink, :input, 10_000)
 
     Membrane.Testing.Pipeline.terminate(pid)
   end
