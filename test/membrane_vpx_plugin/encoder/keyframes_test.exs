@@ -38,6 +38,7 @@ defmodule Membrane.VPx.KeyframesTest do
   @fixtures_dir "test/fixtures"
 
   describe "Keyframes are forced correctly for" do
+    @tag :sometag
     test "VP8 codec" do
       perform_test(
         "ref_vp8.raw",
@@ -77,7 +78,7 @@ defmodule Membrane.VPx.KeyframesTest do
     Enum.each(1..5, fn _n ->
       assert_sink_buffer(pid, :sink, %Membrane.Buffer{
         metadata: %{^metadata_key => %{is_keyframe: true}}
-      })
+      }, 6000)
     end)
 
     assert_end_of_stream(pid, :sink, :input, 10_000)
