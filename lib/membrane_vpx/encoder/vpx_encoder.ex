@@ -103,7 +103,6 @@ defmodule Membrane.VPx.Encoder do
   @spec handle_event(:output, KeyframeRequestEvent.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_event(:output, %KeyframeRequestEvent{}, _ctx, state) do
-    IO.inspect(Membrane.Time.os_time(), label: :keyframe_request)
     {[], %{state | force_next_keyframe: true}}
   end
 

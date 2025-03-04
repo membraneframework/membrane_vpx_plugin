@@ -38,7 +38,6 @@ defmodule Membrane.VPx.KeyframesTest do
   @fixtures_dir "test/fixtures"
 
   describe "Keyframes are forced correctly for" do
-    @tag :sometag
     test "VP8 codec" do
       perform_test(
         "ref_vp8.raw",
