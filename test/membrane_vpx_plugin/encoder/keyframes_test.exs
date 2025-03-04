@@ -75,13 +75,13 @@ defmodule Membrane.VPx.KeyframesTest do
           |> child(:sink, Membrane.Testing.Sink)
       )
 
-    Enum.each(1..5, fn _n ->
+    assert_end_of_stream(pid, :sink, :input, 10_000)
+
+    Enum.each(1..6, fn _n ->
       assert_sink_buffer(pid, :sink, %Membrane.Buffer{
         metadata: %{^metadata_key => %{is_keyframe: true}}
-      }, 6000)
+      })
     end)
-
-    assert_end_of_stream(pid, :sink, :input, 10_000)
 
     Membrane.Testing.Pipeline.terminate(pid)
   end
