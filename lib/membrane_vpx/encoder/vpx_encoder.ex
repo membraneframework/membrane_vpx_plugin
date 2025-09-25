@@ -1,7 +1,5 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
-  require Membrane.Logger
-
   alias Membrane.Pad
   alias Membrane.{Buffer, KeyframeRequestEvent, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
@@ -109,8 +107,7 @@ defmodule Membrane.VPx.Encoder do
   end
 
   def handle_event(_pad, event, _ctx, state) do
-    Membrane.Logger.info("Ignoring event #{inspect(event)}")
-    {[], state}
+    {[forward: event], state}
   end
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
