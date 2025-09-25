@@ -1,6 +1,8 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
+  require Membrane.Logger
 
+  alias Membrane.Pad
   alias Membrane.{Buffer, KeyframeRequestEvent, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
   alias Membrane.VPx.Encoder.Native
@@ -100,10 +102,15 @@ defmodule Membrane.VPx.Encoder do
     {[buffer: {:output, buffers}], %{state | force_next_keyframe: false}}
   end
 
-  @spec handle_event(:output, KeyframeRequestEvent.t(), CallbackContext.t(), State.t()) ::
+  @spec handle_event(Pad.ref(), KeyframeRequestEvent.t(), CallbackContext.t(), State.t()) ::
           callback_return()
   def handle_event(:output, %KeyframeRequestEvent{}, _ctx, state) do
     {[], %{state | force_next_keyframe: true}}
+  end
+
+  def handle_event(_pad, event, _ctx, state) do
+    Membrane.Logger.info("Ignoring event #{inspect(event)}")
+    {[], state}
   end
 
   @spec handle_end_of_stream(:input, CallbackContext.t(), State.t()) :: callback_return()
