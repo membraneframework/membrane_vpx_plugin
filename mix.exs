@@ -1,7 +1,7 @@
 defmodule Membrane.VPx.Plugin.Mixfile do
   use Mix.Project
 
-  @version "0.4.1"
+  @version "0.4.2"
   @github_url "https://github.com/membraneframework/membrane_vpx_plugin"
 
   def project do
@@ -43,7 +43,7 @@ defmodule Membrane.VPx.Plugin.Mixfile do
       {:membrane_raw_video_format, "~> 0.4.0"},
       {:membrane_vp8_format, "~> 0.5.0"},
       {:membrane_vp9_format, "~> 0.5.0"},
-      {:membrane_precompiled_dependency_provider, "~> 0.1.0"},
+      {:membrane_precompiled_dependency_provider, "~> 0.2.1"},
       {:membrane_ivf_plugin, "~> 0.8.0", only: :test},
       {:membrane_raw_video_parser_plugin, "~> 0.12.1", only: :test},
       {:membrane_file_plugin, "~> 0.17.0", only: :test},

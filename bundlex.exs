@@ -14,7 +14,10 @@ defmodule Membrane.VPx.BundlexProject do
         sources: ["vpx_decoder.c", "vpx_common.c"],
         os_deps: [
           libvpx: [
-            {:precompiled, Membrane.PrecompiledDependencyProvider.get_dependency_url(:libvpx)},
+            {:precompiled,
+             Membrane.PrecompiledDependencyProvider.get_dependency_url(:libvpx,
+               version: "1.15.2"
+             )},
             {:pkg_config, "vpx"}
           ]
         ],
@@ -25,7 +28,10 @@ defmodule Membrane.VPx.BundlexProject do
         sources: ["vpx_encoder.c", "vpx_common.c"],
         os_deps: [
           libvpx: [
-            {:precompiled, Membrane.PrecompiledDependencyProvider.get_dependency_url(:libvpx)},
+            {:precompiled,
+             Membrane.PrecompiledDependencyProvider.get_dependency_url(:libvpx,
+               version: "1.15.2"
+             )},
             {:pkg_config, "vpx"}
           ]
         ],
