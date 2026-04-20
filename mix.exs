@@ -48,15 +48,16 @@ defmodule Membrane.VPx.Plugin.Mixfile do
       {:membrane_raw_video_parser_plugin, "~> 0.12.1", only: :test},
       {:membrane_file_plugin, "~> 0.17.0", only: :test},
       {:membrane_realtimer_plugin, "~> 0.9.0", only: :test},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
-      {:credo, ">= 0.0.0", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.4", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: :dev, runtime: false}
     ]
   end
 
   defp dialyzer() do
     opts = [
-      flags: [:error_handling]
+      flags: [:error_handling],
+      plt_add_apps: [:mix, :syntax_tools]
     ]
 
     if System.get_env("CI") == "true" do

@@ -1,8 +1,8 @@
 defmodule Membrane.VPx.Encoder do
   @moduledoc false
-  alias Membrane.Pad
   alias Membrane.{Buffer, KeyframeRequestEvent, RawVideo, VP8, VP9}
   alias Membrane.Element.CallbackContext
+  alias Membrane.Pad
   alias Membrane.VPx.Encoder.Native
 
   @default_encoding_deadline Membrane.Time.milliseconds(10)
