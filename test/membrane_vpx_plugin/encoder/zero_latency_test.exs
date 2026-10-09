@@ -71,7 +71,12 @@ defmodule Membrane.VPx.ZeroLatencyTest do
           |> child(:sink, Membrane.Testing.Sink)
       )
 
-    assert_pipeline_notified(pid, :eos_suppressor, {:processed_buffers, processed_buffers})
+    assert_pipeline_notified(
+      pid,
+      :eos_suppressor,
+      {:processed_buffers, processed_buffers},
+      10_000
+    )
 
     Enum.each(1..processed_buffers, fn _n -> assert_sink_buffer(pid, :sink, _buf) end)
 
