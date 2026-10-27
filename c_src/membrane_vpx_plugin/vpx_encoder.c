@@ -182,6 +182,11 @@ UNIFEX_TERM encode(
 UNIFEX_TERM encode_frame(
     UnifexEnv *env, UnifexPayload *raw_frame, vpx_codec_pts_t pts, int force_keyframe, State *state
 ) {
+  // The payload is read as a full frame of the configured format, so a shorter
+  // one would be read out of bounds.
+  if (raw_frame->size < get_image_byte_size(&state->img)) {
+    return result_error(env, "invalid_frame_size", encode_frame_result_error, NULL, NULL);
+  }
   get_image_from_raw_frame(&state->img, raw_frame);
   return encode(env, &state->img, pts, force_keyframe, state);
 }

@@ -21,6 +21,8 @@ typedef enum ConversionType { IMAGE_TO_RAW_FRAME, RAW_FRAME_TO_IMAGE } Conversio
 
 Dimensions get_plane_dimensions(const vpx_image_t *img, int plane);
 
+size_t get_image_byte_size(const vpx_image_t *img);
+
 void convert_between_image_and_raw_frame(
     vpx_image_t *img, UnifexPayload *raw_frame, ConversionType conversion_type
 );

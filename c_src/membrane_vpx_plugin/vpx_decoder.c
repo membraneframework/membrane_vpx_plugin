@@ -30,19 +30,6 @@ UNIFEX_TERM create(UnifexEnv *env, Codec codec) {
   return result;
 }
 
-size_t get_image_byte_size(const vpx_image_t *img) {
-  const int bytes_per_pixel = (img->fmt & VPX_IMG_FMT_HIGHBITDEPTH) ? 2 : 1;
-  const int number_of_planes = (img->fmt == VPX_IMG_FMT_NV12) ? 2 : 3;
-
-  size_t image_size = 0;
-
-  for (int plane = 0; plane < number_of_planes; ++plane) {
-    Dimensions plane_dimensions = get_plane_dimensions(img, plane);
-    image_size += plane_dimensions.width * plane_dimensions.height * bytes_per_pixel;
-  }
-  return image_size;
-}
-
 void get_raw_frame_from_image(vpx_image_t *img, UnifexPayload *raw_frame) {
   convert_between_image_and_raw_frame(img, raw_frame, IMAGE_TO_RAW_FRAME);
 }
